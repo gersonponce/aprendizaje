@@ -163,14 +163,14 @@ if ($method === 'DELETE') {
 if ($method === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $imagen = $data['imagen'] ?? null;
-    $principal = $data['principal'] ?? null;
+    $principales = $data['principales'] ?? [];
     $secundarias = $data['secundarias'] ?? [];
     $editar = $data['editar'] ?? false;
     $x_imagen=$data['x_imagen']??null;
     $y_imagen=$data['y_imagen']??null;
     $drone_sel=$data['drone_sel']??"";
 
-    if (!$imagen || !$principal) {
+    if (!$imagen || empty($principales)) {
         http_response_code(400);
         echo json_encode(['status' => 'error', 'msg' => 'Faltan datos']);
         exit;
@@ -178,6 +178,7 @@ if ($method === 'POST') {
     
     // Obtener el usuario de la sesión
     $usuario = $_SESSION['user']['username'] ?? 'desconocido';
+    $principales_str = implode(',', $principales);
     $secundarias_str = implode(',', $secundarias);
     
     // Extraer imagen_original y coordenadas del nombre de la imagen
@@ -188,7 +189,7 @@ if ($method === 'POST') {
     if ($editar) {
         // Editar etiquetas existentes
         $stmt = $pdo->prepare('UPDATE etiquetas SET etiqueta_principal = ?, etiquetas_secundarias = ?, usuario = ?, fecha = CURRENT_TIMESTAMP WHERE nombre_imagen = ?');
-        $stmt->bindParam(1, $principal, PDO::PARAM_STR);
+        $stmt->bindParam(1, $principales_str, PDO::PARAM_STR);
         $stmt->bindParam(2, $secundarias_str, PDO::PARAM_STR);
         $stmt->bindParam(3, $usuario, PDO::PARAM_STR);
         $stmt->bindParam(4, $imagen, PDO::PARAM_STR);
@@ -206,7 +207,7 @@ if ($method === 'POST') {
         $stmt = $pdo->prepare('INSERT INTO etiquetas (nombre_imagen, imagen_original, etiqueta_principal, etiquetas_secundarias, usuario,x_imagen,y_imagen,path_imagen) VALUES (?, ?, ?, ?, ?,?,?,?)');
         $stmt->bindParam(1, $imagen, PDO::PARAM_STR);
         $stmt->bindParam(2, $imagen_original, PDO::PARAM_STR);
-        $stmt->bindParam(3, $principal, PDO::PARAM_STR);
+        $stmt->bindParam(3, $principales_str, PDO::PARAM_STR);
         $stmt->bindParam(4, $secundarias_str, PDO::PARAM_STR);
         $stmt->bindParam(5, $usuario, PDO::PARAM_STR);
         $stmt->bindParam(6, $x_imagen, PDO::PARAM_INT);

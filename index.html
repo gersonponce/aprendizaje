@@ -142,31 +142,28 @@
         </div>
         <h2 class="text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Etiquetar imagen</h2>
         <div class="mb-4 lg:mb-6">
-            <span class="font-medium text-sm lg:text-base">Etiqueta principal:</span>
+            <span class="font-medium text-sm lg:text-base">Etiquetas principales:</span>
             <div class="mt-2 space-y-1 lg:space-y-2">
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="LONGITUDINAL" required class="accent-blue-600"> LONGITUDINAL
+                    <input type="checkbox" name="principal" value="LONGITUDINAL" class="accent-blue-600"> LONGITUDINAL
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="TRANSVERSAL" class="accent-blue-600"> TRANSVERSAL
+                    <input type="checkbox" name="principal" value="TRANSVERSAL" class="accent-blue-600"> TRANSVERSAL
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="LONGITUDINAL Y TRANSVERSAL" class="accent-blue-600"> LONGITUDINAL Y TRANSVERSAL
+                    <input type="checkbox" name="principal" value="MALLA PEQUEÑA < 0.3" class="accent-blue-600"> MALLA PEQUEÑA &lt; 0.3
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="MALLA PEQUEÑA < 0.3" class="accent-blue-600"> MALLA PEQUEÑA &lt; 0.3
+                    <input type="checkbox" name="principal" value="MALLA MEDIANA >0.3 <0.5" class="accent-blue-600"> MALLA MEDIANA &gt;0.3 &lt;0.5
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="MALLA MEDIANA >0.3 <0.5" class="accent-blue-600"> MALLA MEDIANA &gt;0.3 &lt;0.5
+                    <input type="checkbox" name="principal" value="MALLA GRANDE > 0.5" class="accent-blue-600"> MALLA GRANDE &gt; 0.5
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="MALLA GRANDE > 0.5" class="accent-blue-600"> MALLA GRANDE &gt; 0.5
+                    <input type="checkbox" name="principal" value="SIN GRIETAS" class="accent-blue-600"> SIN GRIETAS
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="SIN GRIETAS" class="accent-blue-600"> SIN GRIETAS
-                </label>
-                <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="NO SE PUEDE DETERMINAR" class="accent-blue-600"> NO SE PUEDE DETERMINAR
+                    <input type="checkbox" name="principal" value="NO SE PUEDE DETERMINAR" class="accent-blue-600"> NO SE PUEDE DETERMINAR
                 </label>
 
                
@@ -222,7 +219,12 @@
 
 <!-- Tabla de últimos registros -->
 <div class="max-w-5xl mx-auto mt-8 lg:mt-16 mb-10 bg-white rounded-lg shadow p-4 lg:p-6">
-    <h3 class="text-base lg:text-lg font-semibold mb-4">Últimos 50 registros</h3>
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base lg:text-lg font-semibold">Últimos 50 registros</h3>
+        <div class="text-sm text-blue-600 font-medium">
+            <span id="contador-usuario">Imágenes etiquetadas por ti: 0</span>
+        </div>
+    </div>
     <div class="overflow-x-auto">
         <table class="min-w-full text-xs lg:text-sm text-left border">
             <thead>
@@ -686,8 +688,21 @@ function cargarUltimosRegistros() {
         .then(data => {
             const tbody = document.getElementById('tabla-registros');
             tbody.innerHTML = '';
+            
+            // Obtener el usuario actual
+            const userInfo = JSON.parse(sessionStorage.getItem('user'));
+            const usuarioActual = userInfo ? userInfo.username : 'desconocido';
+            
+            // Contar imágenes del usuario actual
+            let contadorUsuario = 0;
+            
             if (data.status === 'ok' && data.registros.length > 0) {
                 data.registros.forEach(reg => {
+                    // Contar si es del usuario actual
+                    if (reg.usuario === usuarioActual) {
+                        contadorUsuario++;
+                    }
+                    
                     const tr = document.createElement('tr');
                     // Formatear coordenadas
                     const coordenadas = reg.X && reg.Y ? `${reg.X}, ${reg.Y}` : '-';
@@ -722,10 +737,10 @@ function cargarUltimosRegistros() {
                         const img = document.getElementById('imagen');
                         img.src = getImagesDir() + imagenActual;
                         img.classList.remove('hidden');
-                        // Principal
-                        const principal = btn.getAttribute('data-principal');
-                        document.querySelectorAll('input[name="principal"]').forEach(radio => {
-                            radio.checked = (radio.value === principal);
+                        // Principales
+                        const principales = btn.getAttribute('data-principal').split(',').map(s => s.trim());
+                        document.querySelectorAll('input[name="principal"]').forEach(checkbox => {
+                            checkbox.checked = principales.includes(checkbox.value);
                         });
                         // Secundarias
                         const secundarias = btn.getAttribute('data-secundarias').split(',').map(s => s.trim());
@@ -766,6 +781,9 @@ function cargarUltimosRegistros() {
             } else {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sin registros</td></tr>';
             }
+            
+            // Actualizar el contador del usuario
+            document.getElementById('contador-usuario').textContent = `Imágenes etiquetadas por ti: ${contadorUsuario}`;
         });
 }
 
@@ -784,13 +802,13 @@ function actualizarRegistrosDespuesDeEtiquetar() {
 
 document.getElementById('etiqueta-form').addEventListener('submit', function(e) {
     e.preventDefault();
-    const principal = document.querySelector('input[name="principal"]:checked');
+    const principales = Array.from(document.querySelectorAll('input[name="principal"]:checked')).map(cb => cb.value);
     const secundarias = Array.from(document.querySelectorAll('input[name="secundarias"]:checked')).map(cb => cb.value);
-    if (!principal) return;
+    if (principales.length === 0) return;
     document.getElementById('guardar-btn').disabled = true;
     const payload = {
         imagen: imagenActual,
-        principal: principal.value,
+        principales: principales,
         secundarias: secundarias,
         x_imagen:current_x_imagen,
         y_imagen:current_y_imagen,
