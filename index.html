@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Etiquetado de Imágenes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    <style>
+        /* Lupa personalizada flotante */
+        #lupa {
+            display: none;
+            position: absolute;
+            border: 2px solid #1976d2;
+            border-radius: 50%;
+            width: 160px;
+            height: 160px;
+            overflow: hidden;
+            pointer-events: none;
+            box-shadow: 0 2px 8px #0002;
+            z-index: 1000;
+        }
+        #lupa-img {
+            position: absolute;
+            transform: scale(2);
+            transform-origin: top left;
+        }
+        .img-lupa-container {
+            position: relative;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header con información del usuario y botón de logout -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-2 lg:gap-0">
+            <div class="flex items-center space-x-4 text-center lg:text-left">
+                <h1 class="text-sm lg:text-lg xl:text-xl font-bold text-blue-900 leading-tight">MODELO BASADO EN MACHINE LEARNING PARA IDENTIFICAR GRIETAS MEDIANTE EL USO DE DRON EN EL PAVIMENTO ASFÁLTICO DE LA Av. CIRCUNVALACIÓN DE LA CIUDAD DE PUNO</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-info" class="text-xs lg:text-sm text-gray-600"></span>
+                <button id="logout-btn" class="px-3 lg:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs lg:text-sm font-medium transition duration-200">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+<div class="flex flex-col lg:flex-row justify-center items-start gap-4 lg:gap-8 mt-8 lg:mt-16 px-4 lg:px-0" id="main-container">
+    <!-- Columna 1: Imagen a etiquetar y controles (primera en móvil, segunda en desktop) -->
+    <div class="bg-white p-4 lg:p-8 rounded-lg shadow-md flex flex-col items-center relative w-full lg:w-auto order-first lg:order-2">
+        <div class="img-lupa-container flex flex-col items-center w-full">
+            <div class="mb-3 w-full flex flex-col items-center">
+                <label for="select-drone" class="block mb-1 text-gray-700 font-semibold text-sm lg:text-base">Selecciona el drone:</label>
+                <select id="select-drone" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm lg:text-base w-full max-w-xs">
+                    <option value="DRONE_0">DRONE_0</option>
+                    <option value="DRONE_1">DRONE_1</option>
+                    <option value="DRONE_2">DRONE_2</option>
+                    <option value="DRONE_3">DRONE_3</option>
+                    <option value="DRONE_4">DRONE_4</option>
+                    <option value="DRONE_5">DRONE_5</option>
+                    <option value="DRONE_6" selected>DRONE_6</option>
+                    <option value="DRONE_7">DRONE_7</option>
+                    <option value="DRONE_8">DRONE_8</option>
+                    <option value="DRONE_9">DRONE_9</option>
+                    <option value="DRONE_10">DRONE_10</option>
+                </select>
+            </div>
+            <div id="contador-faltantes" class="mb-1 text-blue-700 font-semibold text-center text-sm lg:text-base"></div>
+            <div id="nombre-imagen" class="mb-2 text-gray-700 font-semibold text-center text-xs lg:text-sm break-all"></div>
+            <div class="relative inline-block mt-4 lg:mt-8">
+                <!-- Etiqueta TRANSVERSAL en la parte superior -->
+                <div class="absolute -top-6 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10 text-green-600 font-bold bg-white bg-opacity-90 px-2 lg:px-3 py-1 rounded shadow text-xs lg:text-sm">
+                    TRANSVERSAL &lt;------&gt;
+                </div>
+                <!-- Etiqueta LONGITUDINAL en la parte izquierda (oculta en móvil) -->
+                <div class="absolute top-1/2 -left-12 lg:-left-16 transform -translate-y-1/2 z-10 text-blue-700 font-bold bg-white bg-opacity-90 px-2 py-3 rounded shadow text-xs lg:text-sm hidden lg:block" style="writing-mode: vertical-rl; text-orientation: mixed;">
+                    LONGITUDINAL <---------> 
+                </div>
+                <img id="imagen" src="" alt="Imagen a etiquetar" class="max-w-full max-h-[300px] lg:max-w-md lg:max-h-[400px] mx-auto hidden mb-4 lg:mb-6 cursor-zoom-in mt-4">
+            </div>
+
+            <div class="flex gap-4 mt-2 w-full justify-center">
+                <button id="btn-atras" class="px-3 lg:px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold text-sm lg:text-base" disabled>Atrás</button>
+                <button id="btn-adelante" class="px-3 lg:px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold text-sm lg:text-base" disabled>Adelante</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Columna 2: Formulario (segunda en móvil, tercera en desktop) -->
+    <form class="bg-white p-4 lg:p-8 rounded-lg shadow-md w-full lg:min-w-[280px] lg:max-w-xs order-2 lg:order-3" id="etiqueta-form">
+        <div id="aviso-edicion" class="hidden mb-4 p-3 rounded bg-yellow-100 border border-yellow-400 text-yellow-800 flex items-center justify-between">
+            <span class="text-sm lg:text-base">Modo edición: editando registro existente</span>
+            <button type="button" id="cancelar-edicion" class="ml-2 lg:ml-4 px-2 py-1 rounded bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-semibold text-xs">Cancelar</button>
+        </div>
+        <h2 class="text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Etiquetar imagen</h2>
+        <div class="mb-4 lg:mb-6">
+            <span class="font-medium text-sm lg:text-base">Etiqueta principal:</span>
+            <div class="mt-2 space-y-1 lg:space-y-2">
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="LONGITUDINAL" required class="accent-blue-600"> LONGITUDINAL
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="TRANSVERSAL" class="accent-blue-600"> TRANSVERSAL
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="LONGITUDINAL Y TRANSVERSAL" class="accent-blue-600"> LONGITUDINAL Y TRANSVERSAL
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="TIPO MALLA" class="accent-blue-600"> TIPO MALLA
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="SIN GRIETAS" class="accent-blue-600"> SIN GRIETAS
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="NO SE PUEDE DETERMINAR" class="accent-blue-600"> PARA CONSULTA
+                </label>
+
+               
+            </div>
+        </div>
+        <div class="mb-4 lg:mb-6">
+            <span class="font-medium text-sm lg:text-base">Etiquetas secundarias:</span>
+            <div class="mt-2 space-y-1 lg:space-y-2">
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="SOMBRA" class="accent-blue-600"> SOMBRA
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="CABLES" class="accent-blue-600"> CABLES
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="PARCHADO" class="accent-blue-600"> PARCHADO
+                </label>
+
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="AGUA" class="accent-blue-600"> AGUA
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="SEÑAL DE TRÁNSITO" class="accent-blue-600"> SEÑAL DE TRÁNSITO
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="BUZÓN" class="accent-blue-600"> BUZÓN
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="checkbox" name="secundarias" value="PARA CONSULTA" class="accent-blue-600"> PARA CONSULTA
+                </label>
+            </div>
+        </div>
+        <button type="submit" id="guardar-btn" class="w-full py-3 lg:py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded transition disabled:bg-gray-400 text-sm lg:text-base">Guardar y siguiente</button>
+    </form>
+    
+    <!-- Columna 3: Grilla global (tercera en móvil, primera en desktop) -->
+    <div class="bg-white p-4 rounded-lg shadow-md flex flex-col items-center order-3 lg:order-first">
+        <div class="flex items-center mb-2 gap-2">
+            <span class="text-gray-700 font-semibold text-sm lg:text-base">Grilla global</span>
+            <button id="zoom-out-btn" class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold text-lg">-</button>
+            <button id="zoom-in-btn" class="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-bold text-lg">+</button>
+        </div>
+        <div id="grilla-global-viewport" class="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] overflow-hidden bg-gray-100 border-2 border-blue-200 rounded shadow flex items-center justify-center">
+            <span class="absolute top-2 left-2 z-10 text-green-600 font-bold bg-white bg-opacity-80 px-2 py-1 rounded shadow text-xs lg:text-sm">TRANSVERSAL &lt;------&gt;</span>
+            <span class="absolute top-8 lg:top-12 left-2 z-10 text-blue-700 font-bold bg-white bg-opacity-80 px-2 py-1 rounded shadow text-xs lg:text-sm" style="writing-mode: sideways-lr; text-orientation: mixed;">LONGITUDINAL <---------></span>
+            <img id="grilla-global-preview" src="" alt="Grilla global" class="absolute top-0 left-0 select-none cursor-grab" style="max-width:none; max-height:none; display:none;">
+        </div>
+        <a id="enlace-grilla-global" href="#" target="_blank" class="hidden text-blue-600 hover:underline mb-4 text-sm">Ver grilla global</a>
+        <span id="grilla-global-msg" class="text-red-600 text-sm mt-2 hidden">No se encontró la grilla global para esta imagen.</span>
+    </div>
+</div>
+<div class="text-center text-blue-700 text-lg lg:text-xl mt-12 lg:mt-24 hidden" id="done-msg">¡Todas las imágenes han sido etiquetadas!</div>
+
+<!-- Tabla de últimos registros -->
+<div class="max-w-5xl mx-auto mt-8 lg:mt-16 mb-10 bg-white rounded-lg shadow p-4 lg:p-6">
+    <h3 class="text-base lg:text-lg font-semibold mb-4">Últimos 50 registros</h3>
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-xs lg:text-sm text-left border">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-3 border">Imagen</th>
+                    <th class="py-2 px-3 border">Imagen Original</th>
+                    <th class="py-2 px-3 border">Etiqueta principal</th>
+                    <th class="py-2 px-3 border">Etiquetas secundarias</th>
+                    <th class="py-2 px-3 border">Usuario</th>
+                    <th class="py-2 px-3 border">Fecha</th>
+                    <th class="py-2 px-3 border">Editar</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-registros">
+                <tr><td colspan="6" class="text-center py-4 text-gray-400">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de zoom -->
+<div id="modal-zoom" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-2xl w-full relative max-h-[90vh] flex flex-col">
+        <button id="cerrar-modal" class="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-2xl font-bold">&times;</button>
+        <h3 class="text-lg font-semibold mb-4">Zoom de la imagen</h3>
+        <div class="flex-1 overflow-y-auto flex flex-col gap-8 items-center justify-center">
+            <div class="flex flex-col items-center w-full">
+                <span class="mb-2 text-sm text-gray-600">150%</span>
+                <div class="bg-gray-100 rounded shadow p-2 w-full flex justify-center">
+                    <img id="zoom150" src="" alt="Zoom 150%" class="scale-[1.5] origin-top rounded w-full max-w-lg h-auto">
+                </div>
+            </div>
+            <div class="flex flex-col items-center w-full">
+                <span class="mb-2 text-sm text-gray-600">200%</span>
+                <div class="bg-gray-100 rounded shadow p-2 w-full flex justify-center">
+                    <img id="zoom200" src="" alt="Zoom 200%" class="scale-[2] origin-top rounded w-full max-w-lg h-auto">
+                </div>
+            </div>
+            <div class="flex flex-col items-center w-full">
+                <span class="mb-2 text-sm text-gray-600">300%</span>
+                <div class="bg-gray-100 rounded shadow p-2 w-full flex justify-center">
+                    <img id="zoom300" src="" alt="Zoom 300%" class="scale-[3] origin-top rounded w-full max-w-lg h-auto">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Verificación de autenticación
+function checkAuth() {
+    const isAuthenticated = sessionStorage.getItem('isAuthenticated');
+    const user = sessionStorage.getItem('user');
+    
+    if (!isAuthenticated || !user) {
+        window.location.href = 'login.html';
+        return false;
+    }
+    
+    // Mostrar información del usuario
+    const userInfo = JSON.parse(user);
+    document.getElementById('user-info').textContent = `Usuario: ${userInfo.username} (${userInfo.role})`;
+    return true;
+}
+
+// Función de logout
+async function logout() {
+    try {
+        await fetch('logout.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+    } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+    } finally {
+        // Limpiar sessionStorage y redirigir
+        sessionStorage.removeItem('isAuthenticated');
+        sessionStorage.removeItem('user');
+        window.location.href = 'login.html';
+    }
+}
+
+// Verificar autenticación al cargar la página
+if (!checkAuth()) {
+    // Si no está autenticado, la función checkAuth ya redirige
+    throw new Error('No autenticado');
+}
+
+// BASE_URL ya está definido en config.js
+const API = BASE_URL + '/api.php';
+let droneSeleccionado = 'DRONE_6';
+let imagenActual = null;
+let imagenesNoEtiquetadas = [];
+let indiceActual = 0;
+let modoEdicion = false;
+let imagenEdicion = null;
+let isDragging = false, dragStartX = 0, dragStartY = 0, imgStartX = 0, imgStartY = 0;
+let grillaCSV = null;
+let grillaCSVLoadedForDrone = null;
+let grillaZoom = 1;
+const grillaZoomMin = 0.5;
+const grillaZoomMax = 4;
+let current_x_imagen=0;
+let current_y_imagen=0;
+
+// Función para obtener la ruta correcta de las imágenes según el drone actual
+function getImagesDir(drone = droneSeleccionado) {
+    return BASE_URL + '/imagenes/' + drone + '/grilla/';
+}
+
+function cargarListaImagenes() {
+    // Obtener la lista de imágenes no etiquetadas
+    fetch(API + '?todas=1&drone=' + encodeURIComponent(droneSeleccionado))
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'done' || !data.imagenes || data.imagenes.length === 0) {
+                imagenesNoEtiquetadas = [];
+                indiceActual = 0;
+                mostrarImagenActual();
+                return;
+            }
+            imagenesNoEtiquetadas = data.imagenes;
+            indiceActual = 0;
+            mostrarImagenActual();
+        });
+}
+
+async function cargarCSVGrilla(drone) {
+    const url = `${BASE_URL}/imagenes/${drone}/${drone}_GRILLA.csv`;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('No se pudo cargar el CSV');
+        const text = await resp.text();
+        grillaCSV = parseCSV(text);
+        grillaCSVLoadedForDrone = drone;
+    } catch (e) {
+        grillaCSV = null;
+        grillaCSVLoadedForDrone = null;
+    }
+}
+
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const headers = lines[0].split(',');
+    return lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
+        return obj;
+    });
+}
+
+function mostrarImagenActual() {
+    const img = document.getElementById('imagen');
+    const nombreDiv = document.getElementById('nombre-imagen');
+    const contadorDiv = document.getElementById('contador-faltantes');
+    const enlaceGrilla = document.getElementById('enlace-grilla-global');
+    if (imagenesNoEtiquetadas.length === 0) {
+        img.classList.add('hidden');
+        nombreDiv.textContent = '';
+        contadorDiv.textContent = '';
+        enlaceGrilla.classList.add('hidden');
+        document.getElementById('btn-atras').disabled = true;
+        document.getElementById('btn-adelante').disabled = true;
+        return;
+    }
+    imagenActual = imagenesNoEtiquetadas[indiceActual];
+    img.src = getImagesDir() + imagenActual;
+    img.classList.remove('hidden');
+    nombreDiv.textContent = imagenActual;
+    contadorDiv.textContent = `Faltan ${imagenesNoEtiquetadas.length} imágenes por etiquetar`;
+    // Enlace grilla global (ahora por API)
+    const match = imagenActual.match(/^(DJI_\d{4})/);
+    if (match) {
+        let droneNum = droneSeleccionado.replace('DRONE_', '');
+        //if (droneNum.length === 1) droneNum = '0' + droneNum;
+        const nombreGrilla = match[1];
+        const urlGrilla = `${API}?grillaglobal=${encodeURIComponent(nombreGrilla)}&drone=DRONE_${droneNum}`;
+        enlaceGrilla.href = urlGrilla;
+        enlaceGrilla.classList.remove('hidden');
+        console.log('Enlace grilla global:', urlGrilla); // DEPURACIÓN
+    } else {
+        enlaceGrilla.classList.add('hidden');
+    }
+    document.getElementById('etiqueta-form').reset();
+    document.getElementById('btn-atras').disabled = indiceActual === 0;
+    document.getElementById('btn-adelante').disabled = indiceActual === imagenesNoEtiquetadas.length - 1;
+    // Previsualización grilla global inferior
+    const grillaImg = document.getElementById('grilla-global-preview');
+    const grillaMsg = document.getElementById('grilla-global-msg');
+    const grillaViewport = document.getElementById('grilla-global-viewport');
+    if (match) {
+        let droneNum = droneSeleccionado.replace('DRONE_', '');
+        // Asegurar que el número del drone tenga el formato correcto (ej: 06, 10)
+        //if (droneNum.length === 1) droneNum = '0' + droneNum;
+        const nombreGrilla = match[1];
+        const urlGrilla = `${API}?grillaglobal=${encodeURIComponent(nombreGrilla)}&drone=DRONE_${droneNum}`;
+        console.log('Cargando grilla global:', urlGrilla); // DEPURACIÓN
+        grillaImg.src = urlGrilla;
+        grillaImg.style.display = 'none';
+        grillaMsg.classList.add('hidden');
+        grillaImg.onerror = function() {
+            grillaImg.style.display = 'none';
+            grillaMsg.classList.remove('hidden');
+        };
+        grillaImg.onload = async function() {
+            grillaImg.style.display = 'block';
+            grillaMsg.classList.add('hidden');
+            grillaZoom = 1;
+            grillaImg.style.transform = `scale(${grillaZoom})`;
+            // Centrar la imagen al cargar según CSV
+            if (grillaCSVLoadedForDrone !== droneSeleccionado) {
+                await cargarCSVGrilla(droneSeleccionado);
+            }
+            if (grillaCSV) {
+                const fila = grillaCSV.find(row => row.archivo_guardado === imagenActual);
+                console.log(fila);
+                if (fila && fila.x1 && fila.y1) {
+                    const x1 = parseInt(fila.x1, 10);
+                    const y1 = parseInt(fila.y1, 10);
+                    current_x_imagen=x1;
+                    current_y_imagen=y1;
+                    // Centrar x1, y1 en el viewport 600x600
+                    const left = 150 - x1;
+                    const top = 150 - y1;
+                    // Limitar para no sacar la imagen del viewport
+                    const minX = Math.min(0, 600 - grillaImg.naturalWidth);
+                    const minY = Math.min(0, 600 - grillaImg.naturalHeight);
+                    const maxX = 0;
+                    const maxY = 0;
+                    grillaImg.style.left = Math.max(minX, Math.min(maxX, left)) + 'px';
+                    grillaImg.style.top = Math.max(minY, Math.min(maxY, top)) + 'px';
+                } else {
+                    grillaImg.style.left = '0px';
+                    grillaImg.style.top = '0px';
+                }
+            } else {
+                grillaImg.style.left = '0px';
+                grillaImg.style.top = '0px';
+            }
+        };
+    } else {
+        grillaImg.style.display = 'none';
+        grillaMsg.classList.remove('hidden');
+    }
+}
+
+function cargarUltimosRegistros() {
+    fetch(API + '?ultimos=1')
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('tabla-registros');
+            tbody.innerHTML = '';
+            if (data.status === 'ok' && data.registros.length > 0) {
+                data.registros.forEach(reg => {
+                    const tr = document.createElement('tr');
+                    // Formatear coordenadas
+                    const coordenadas = reg.X && reg.Y ? `${reg.X}, ${reg.Y}` : '-';
+                    
+                    tr.innerHTML = `
+                        <td class="border px-2 py-1">
+                            <img src="${API}?img=${encodeURIComponent(reg.nombre_imagen)}&drone=${droneSeleccionado}" alt="${reg.nombre_imagen}" class="h-12 max-w-[80px] object-contain rounded cursor-pointer hover:opacity-80 transition-opacity" loading="lazy" onclick="window.open('${API}?img=${encodeURIComponent(reg.nombre_imagen)}&drone=${droneSeleccionado}', '_blank')">
+                            <div class="text-xs text-gray-500">${reg.nombre_imagen}</div>
+                        </td>
+                        <td class="border px-2 py-1 text-xs">${reg.imagen_original || '-'}</td>
+                        <td class="border px-2 py-1">${reg.etiqueta_principal}</td>
+                        <td class="border px-2 py-1">${reg.etiquetas_secundarias}</td>
+                        <td class="border px-2 py-1 text-xs font-medium">${reg.usuario || 'N/A'}</td>
+                        <td class="border px-2 py-1 text-xs">${reg.fecha}</td>
+                        <td class="border px-2 py-1 text-center">
+                            <button class="editar-btn px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-yellow-900 font-semibold text-xs" data-img="${reg.nombre_imagen}" data-principal="${reg.etiqueta_principal}" data-secundarias="${reg.etiquetas_secundarias}">Editar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                // Asignar eventos a los botones de editar
+                document.querySelectorAll('.editar-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        modoEdicion = true;
+                        imagenEdicion = btn.getAttribute('data-img');
+                        // Cargar datos en el formulario
+                        imagenActual = imagenEdicion;
+                        // Mostrar la imagen aunque no esté en la lista de no etiquetadas
+                        const img = document.getElementById('imagen');
+                        img.src = getImagesDir() + imagenActual;
+                        img.classList.remove('hidden');
+                        // Principal
+                        const principal = btn.getAttribute('data-principal');
+                        document.querySelectorAll('input[name="principal"]').forEach(radio => {
+                            radio.checked = (radio.value === principal);
+                        });
+                        // Secundarias
+                        const secundarias = btn.getAttribute('data-secundarias').split(',').map(s => s.trim());
+                        document.querySelectorAll('input[name="secundarias"]').forEach(cb => {
+                            cb.checked = secundarias.includes(cb.value);
+                        });
+                        // Scroll al formulario
+                        document.getElementById('etiqueta-form').scrollIntoView({behavior: 'smooth'});
+                        document.getElementById('aviso-edicion').classList.remove('hidden');
+                        document.getElementById('nombre-imagen').textContent = imagenActual;
+                        document.getElementById('contador-faltantes').textContent = `Faltan ${imagenesNoEtiquetadas.length} imágenes por etiquetar`;
+                        // Enlace grilla global (ahora por API)
+                        const enlaceGrilla = document.getElementById('enlace-grilla-global');
+                        const match = imagenActual.match(/^(DJI_\d{4})/);
+                        if (match) {
+                            let droneNum = droneSeleccionado.replace('DRONE_', '');
+                            if (droneNum.length === 1) droneNum = '0' + droneNum;
+                            const nombreGrilla = match[1];
+                            const urlGrilla = `${API}?grillaglobal=${encodeURIComponent(nombreGrilla)}&drone=DRONE_${droneNum}`;
+                            enlaceGrilla.href = urlGrilla;
+                            enlaceGrilla.classList.remove('hidden');
+                            console.log('Enlace grilla global:', urlGrilla); // DEPURACIÓN
+                        } else {
+                            enlaceGrilla.classList.add('hidden');
+                        }
+                    });
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sin registros</td></tr>';
+            }
+        });
+}
+
+// Llamar al cargar la página y cada vez que se guarda una etiqueta
+window.onload = function() {
+    cargarListaImagenes();
+    cargarUltimosRegistros();
+    
+    // Event listener para el botón de logout
+    document.getElementById('logout-btn').addEventListener('click', logout);
+};
+
+function actualizarRegistrosDespuesDeEtiquetar() {
+    cargarUltimosRegistros();
+}
+
+document.getElementById('etiqueta-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const principal = document.querySelector('input[name="principal"]:checked');
+    const secundarias = Array.from(document.querySelectorAll('input[name="secundarias"]:checked')).map(cb => cb.value);
+    if (!principal) return;
+    document.getElementById('guardar-btn').disabled = true;
+    const payload = {
+        imagen: imagenActual,
+        principal: principal.value,
+        secundarias: secundarias,
+        x_imagen:current_x_imagen,
+        y_imagen:current_y_imagen,
+        drone_sel:droneSeleccionado
+    };
+    if (modoEdicion) {
+        payload.editar = true;
+    }
+    fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('guardar-btn').disabled = false;
+        if (modoEdicion) {
+            modoEdicion = false;
+            imagenEdicion = null;
+            document.getElementById('aviso-edicion').classList.add('hidden');
+            document.getElementById('etiqueta-form').reset();
+            cargarUltimosRegistros();
+        } else {
+            // Eliminar la imagen actual de la lista
+            if (imagenesNoEtiquetadas.length > 0) {
+                imagenesNoEtiquetadas.splice(indiceActual, 1);
+                if (indiceActual >= imagenesNoEtiquetadas.length) {
+                    indiceActual = Math.max(0, imagenesNoEtiquetadas.length - 1);
+                }
+            }
+            mostrarImagenActual();
+            actualizarRegistrosDespuesDeEtiquetar();
+        }
+    });
+});
+
+// Al hacer clic en la imagen, abrir en nueva pestaña usando el backend
+imagen.addEventListener('click', function() {
+    if (!imagenActual) return;
+    window.open(API + '?img=' + encodeURIComponent(imagenActual) + '&drone=' + droneSeleccionado, '_blank');
+});
+
+document.getElementById('btn-atras').addEventListener('click', function() {
+    if (indiceActual > 0) {
+        indiceActual--;
+        mostrarImagenActual();
+    }
+});
+document.getElementById('btn-adelante').addEventListener('click', function() {
+    if (indiceActual < imagenesNoEtiquetadas.length - 1) {
+        indiceActual++;
+        mostrarImagenActual();
+    }
+});
+
+document.getElementById('cancelar-edicion').addEventListener('click', function() {
+    modoEdicion = false;
+    imagenEdicion = null;
+    document.getElementById('aviso-edicion').classList.add('hidden');
+    document.getElementById('etiqueta-form').reset();
+    // Restaurar imagen actual de la lista si hay imágenes no etiquetadas
+    if (imagenesNoEtiquetadas.length > 0) {
+        imagenActual = imagenesNoEtiquetadas[indiceActual];
+        const img = document.getElementById('imagen');
+        img.src = getImagesDir() + imagenActual;
+        img.classList.remove('hidden');
+        document.getElementById('nombre-imagen').textContent = imagenActual;
+        document.getElementById('contador-faltantes').textContent = `Faltan ${imagenesNoEtiquetadas.length} imágenes por etiquetar`;
+        // Enlace grilla global (ahora por API)
+        const enlaceGrilla = document.getElementById('enlace-grilla-global');
+        const match = imagenActual.match(/^(DJI_\d{4})/);
+        if (match) {
+            let droneNum = droneSeleccionado.replace('DRONE_', '');
+            if (droneNum.length === 1) droneNum = '0' + droneNum;
+            const nombreGrilla = match[1];
+            const urlGrilla = `${API}?grillaglobal=${encodeURIComponent(nombreGrilla)}&drone=DRONE_${droneNum}`;
+            enlaceGrilla.href = urlGrilla;
+            enlaceGrilla.classList.remove('hidden');
+            console.log('Enlace grilla global:', urlGrilla); // DEPURACIÓN
+        } else {
+            enlaceGrilla.classList.add('hidden');
+        }
+    }
+    // Previsualización grilla global inferior
+    const grillaImg = document.getElementById('grilla-global-preview');
+    const grillaMsg = document.getElementById('grilla-global-msg');
+    grillaImg.classList.add('hidden');
+    grillaMsg.classList.remove('hidden');
+});
+
+document.getElementById('select-drone').addEventListener('change', function(e) {
+    droneSeleccionado = e.target.value;
+    cargarCSVGrilla(droneSeleccionado);
+    cargarListaImagenes();
+});
+
+// Drag para la imagen grilla global
+const grillaImg = document.getElementById('grilla-global-preview');
+const grillaViewport = document.getElementById('grilla-global-viewport');
+grillaImg.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    grillaImg.classList.add('cursor-grabbing');
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    imgStartX = parseInt(grillaImg.style.left || '0', 10);
+    imgStartY = parseInt(grillaImg.style.top || '0', 10);
+    e.preventDefault();
+});
+document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    let newX = imgStartX + dx;
+    let newY = imgStartY + dy;
+    // Limitar para no sacar la imagen del viewport
+    const maxX = 0;
+    const maxY = 0;
+    const minX = Math.min(0, 600 - grillaImg.naturalWidth);
+    const minY = Math.min(0, 600 - grillaImg.naturalHeight);
+    newX = Math.max(minX, Math.min(maxX, newX));
+    newY = Math.max(minY, Math.min(maxY, newY));
+    grillaImg.style.left = newX + 'px';
+    grillaImg.style.top = newY + 'px';
+});
+document.addEventListener('mouseup', function() {
+    isDragging = false;
+    grillaImg.classList.remove('cursor-grabbing');
+});
+
+// Función para obtener las coordenadas del CSV para la imagen actual
+function obtenerCoordenadasCSV() {
+    if (!grillaCSV || !imagenActual) return { x: 250, y: 250 }; // centro por defecto
+    
+    const fila = grillaCSV.find(row => row.archivo_guardado === imagenActual);
+    if (fila && fila.x1 && fila.y1) {
+        const x1 = parseInt(fila.x1, 10);
+        const y1 = parseInt(fila.y1, 10);
+        return { x: x1, y: y1 };
+    }
+    return { x: 250, y: 250 }; // centro por defecto
+}
+
+// Botones de zoom in/out para la grilla global
+document.getElementById('zoom-in-btn').addEventListener('click', function() {
+    if (grillaImg.style.display === 'none') return;
+    let newZoom = Math.min(grillaZoomMax, grillaZoom + 0.1);
+    if (newZoom === grillaZoom) return;
+    
+    // Obtener coordenadas del CSV y centrar en ese punto
+    const coords = obtenerCoordenadasCSV();
+    zoomGrillaGlobal(newZoom, coords.x, coords.y);
+});
+document.getElementById('zoom-out-btn').addEventListener('click', function() {
+    if (grillaImg.style.display === 'none') return;
+    let newZoom = Math.max(grillaZoomMin, grillaZoom - 0.1);
+    if (newZoom === grillaZoom) return;
+    
+    // Obtener coordenadas del CSV y centrar en ese punto
+    const coords = obtenerCoordenadasCSV();
+    zoomGrillaGlobal(newZoom, coords.x, coords.y);
+});
+
+function zoomGrillaGlobal(newZoom, targetX, targetY) {
+    // Usar las coordenadas del CSV como punto de referencia
+    const centerX = 250; // centro del viewport
+    const centerY = 250;
+    
+    // Calcular el offset de la imagen
+    const imgLeft = parseInt(grillaImg.style.left || '0', 10);
+    const imgTop = parseInt(grillaImg.style.top || '0', 10);
+    
+    // Calcular el punto relativo en la imagen (coordenadas del CSV)
+    const relX = (targetX - imgLeft) / grillaZoom;
+    const relY = (targetY - imgTop) / grillaZoom;
+    
+    // Actualizar el zoom
+    grillaZoom = newZoom;
+    grillaImg.style.transform = `scale(${grillaZoom})`;
+    
+    // Calcular nueva posición para mantener las coordenadas del CSV centradas
+    const newLeft = targetX - relX * grillaZoom;
+    const newTop = targetY - relY * grillaZoom;
+    
+    // Limitar para no sacar la imagen del viewport
+    const minX = Math.min(0, 500 - grillaImg.naturalWidth * grillaZoom);
+    const minY = Math.min(0, 500 - grillaImg.naturalHeight * grillaZoom);
+    const maxX = 0;
+    const maxY = 0;
+    
+    grillaImg.style.left = Math.max(minX, Math.min(maxX, newLeft)) + 'px';
+    grillaImg.style.top = Math.max(minY, Math.min(maxY, newTop)) + 'px';
+}
+</script>
+</body>
+</html> 

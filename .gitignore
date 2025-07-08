@@ -1,0 +1,71 @@
+# Archivos de configuración local
+config.js
+config.php
+.env
+.env.local
+.env.production
+
+# Base de datos SQLite (ya no se usa)
+*.db
+*.sqlite
+*.sqlite3
+etiquetas.db
+
+# Configuración de base de datos MySQL (opcional, para producción)
+database_prod.php
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos temporales
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Archivos de IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de backup
+*.bak
+*.backup
+*.old
+
+# Archivos de sesión PHP
+sess_*
+
+# Archivos de error PHP
+error_log
+php_errors.log
+
+# Archivos de configuración del servidor
+.htaccess.local
+apache.conf.local
+
+# Archivos de dependencias (si usas Composer)
+vendor/
+composer.lock
+
+# Archivos de Node.js (si usas npm)
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Archivos de imágenes temporales
+temp/
+tmp/
+uploads/
+
+# Archivos de configuración específicos del proyecto
+users.json
+test_grilla.php
+
+# Carpeta de imágenes (archivos grandes)
+imagenes/
+imagenes/* 
