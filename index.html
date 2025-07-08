@@ -379,42 +379,81 @@ async function mostrarImagenActual() {
                 grillaImg.style.display = 'none';
                 grillaMsg.classList.remove('hidden');
             };
+            grillaImg.onload=async function () {
+                grillaImg.style.display = 'block';
+                grillaMsg.classList.add('hidden');
+                grillaZoom = 1;
+                grillaImg.style.transform = `scale(${grillaZoom})`;
+                // Centrar la imagen al cargar según CSV
+                if (grillaCSVLoadedForDrone !== droneSeleccionado) {
+                    await cargarCSVGrilla(droneSeleccionado);
+                }
+                if (grillaCSV) {
+                    const fila = grillaCSV.find(row => row.archivo_guardado === imagenActual);
+                    console.log(fila);
+                    if (fila && fila.x1 && fila.y1) {
+                        const x1 = parseInt(fila.x1, 10);
+                        const y1 = parseInt(fila.y1, 10);
+                        current_x_imagen = x1;
+                        current_y_imagen = y1;
+                        // Centrar x1, y1 en el viewport 600x600
+                        const left = 150 - x1;
+                        const top = 150 - y1;
+                        // Limitar para no sacar la imagen del viewport
+                        const minX = Math.min(0, 600 - grillaImg.naturalWidth);
+                        const minY = Math.min(0, 600 - grillaImg.naturalHeight);
+                        const maxX = 0;
+                        const maxY = 0;
+                        grillaImg.style.left = Math.max(minX, Math.min(maxX, left)) + 'px';
+                        grillaImg.style.top = Math.max(minY, Math.min(maxY, top)) + 'px';
+                    } else {
+                        grillaImg.style.left = '0px';
+                        grillaImg.style.top = '0px';
+                    }
+                } else {
+                    grillaImg.style.left = '0px';
+                    grillaImg.style.top = '0px';
+                }
+            }
         }
-
-        grillaImg.style.display = 'block';
-        grillaMsg.classList.add('hidden');
-        grillaZoom = 1;
-        grillaImg.style.transform = `scale(${grillaZoom})`;
-        // Centrar la imagen al cargar según CSV
-        if (grillaCSVLoadedForDrone !== droneSeleccionado) {
-            await cargarCSVGrilla(droneSeleccionado);
-        }
-        if (grillaCSV) {
-            const fila = grillaCSV.find(row => row.archivo_guardado === imagenActual);
-            console.log(fila);
-            if (fila && fila.x1 && fila.y1) {
-                const x1 = parseInt(fila.x1, 10);
-                const y1 = parseInt(fila.y1, 10);
-                current_x_imagen = x1;
-                current_y_imagen = y1;
-                // Centrar x1, y1 en el viewport 600x600
-                const left = 150 - x1;
-                const top = 150 - y1;
-                // Limitar para no sacar la imagen del viewport
-                const minX = Math.min(0, 600 - grillaImg.naturalWidth);
-                const minY = Math.min(0, 600 - grillaImg.naturalHeight);
-                const maxX = 0;
-                const maxY = 0;
-                grillaImg.style.left = Math.max(minX, Math.min(maxX, left)) + 'px';
-                grillaImg.style.top = Math.max(minY, Math.min(maxY, top)) + 'px';
+        else
+        {
+            grillaImg.style.display = 'block';
+            grillaMsg.classList.add('hidden');
+            grillaZoom = 1;
+            grillaImg.style.transform = `scale(${grillaZoom})`;
+            // Centrar la imagen al cargar según CSV
+            if (grillaCSVLoadedForDrone !== droneSeleccionado) {
+                await cargarCSVGrilla(droneSeleccionado);
+            }
+            if (grillaCSV) {
+                const fila = grillaCSV.find(row => row.archivo_guardado === imagenActual);
+                console.log(fila);
+                if (fila && fila.x1 && fila.y1) {
+                    const x1 = parseInt(fila.x1, 10);
+                    const y1 = parseInt(fila.y1, 10);
+                    current_x_imagen = x1;
+                    current_y_imagen = y1;
+                    // Centrar x1, y1 en el viewport 600x600
+                    const left = 150 - x1;
+                    const top = 150 - y1;
+                    // Limitar para no sacar la imagen del viewport
+                    const minX = Math.min(0, 600 - grillaImg.naturalWidth);
+                    const minY = Math.min(0, 600 - grillaImg.naturalHeight);
+                    const maxX = 0;
+                    const maxY = 0;
+                    grillaImg.style.left = Math.max(minX, Math.min(maxX, left)) + 'px';
+                    grillaImg.style.top = Math.max(minY, Math.min(maxY, top)) + 'px';
+                } else {
+                    grillaImg.style.left = '0px';
+                    grillaImg.style.top = '0px';
+                }
             } else {
                 grillaImg.style.left = '0px';
                 grillaImg.style.top = '0px';
             }
-        } else {
-            grillaImg.style.left = '0px';
-            grillaImg.style.top = '0px';
         }
+
 
         grillaAnterior = urlGrilla;
     } else {
