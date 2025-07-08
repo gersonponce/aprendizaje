@@ -28,6 +28,45 @@
             position: relative;
             display: inline-block;
         }
+        
+        /* Estilos para medición */
+        .imagen-medicion {
+            position: relative;
+            cursor: crosshair;
+        }
+        
+        .linea-medicion {
+            position: absolute;
+            background-color: #ff0000;
+            height: 2px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .punto-medicion {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #ff0000;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 101;
+        }
+        
+        .texto-medicion {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 102;
+        }
+        
+
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -65,9 +104,14 @@
                     <option value="DRONE_10">DRONE_10</option>
                 </select>
             </div>
+            <div class="mb-3 w-full flex flex-col items-center">
+                <label for="tamanio-imagen" class="block mb-1 text-gray-700 font-semibold text-sm lg:text-base">Tamaño de imagen (metros):</label>
+                <input type="number" id="tamanio-imagen" value="0.8" step="0.1" min="0.1" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm lg:text-base w-full max-w-xs">
+            </div>
+
             <div id="contador-faltantes" class="mb-1 text-blue-700 font-semibold text-center text-sm lg:text-base"></div>
             <div id="nombre-imagen" class="mb-2 text-gray-700 font-semibold text-center text-xs lg:text-sm break-all"></div>
-            <div class="relative inline-block mt-4 lg:mt-8">
+            <div class="relative inline-block mt-4 lg:mt-8 imagen-medicion" id="contenedor-imagen">
                 <!-- Etiqueta TRANSVERSAL en la parte superior -->
                 <div class="absolute -top-6 lg:-top-8 left-1/2 transform -translate-x-1/2 z-10 text-green-600 font-bold bg-white bg-opacity-90 px-2 lg:px-3 py-1 rounded shadow text-xs lg:text-sm">
                     TRANSVERSAL &lt;------&gt;
@@ -76,9 +120,13 @@
                 <div class="absolute top-1/2 -left-12 lg:-left-16 transform -translate-y-1/2 z-10 text-blue-700 font-bold bg-white bg-opacity-90 px-2 py-3 rounded shadow text-xs lg:text-sm hidden lg:block" style="writing-mode: vertical-rl; text-orientation: mixed;">
                     LONGITUDINAL <---------> 
                 </div>
-                <img id="imagen" src="" alt="Imagen a etiquetar" class="max-w-full max-h-[300px] lg:max-w-md lg:max-h-[400px] mx-auto hidden mb-4 lg:mb-6 cursor-zoom-in mt-4">
+                <img id="imagen" src="" alt="Imagen a etiquetar" class="max-w-full max-h-[300px] lg:max-w-md lg:max-h-[400px] mx-auto hidden mb-4 lg:mb-6 mt-4 cursor-crosshair">
             </div>
-
+            <div class="mb-3 w-full flex flex-col items-center">
+                <button type="button" id="btn-borrar-mediciones" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm lg:text-base font-medium transition duration-200">
+                    Borrar mediciones
+                </button>
+            </div>
             <div class="flex gap-4 mt-2 w-full justify-center">
                 <button id="btn-atras" class="px-3 lg:px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold text-sm lg:text-base" disabled>Atrás</button>
                 <button id="btn-adelante" class="px-3 lg:px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold text-sm lg:text-base" disabled>Adelante</button>
@@ -106,7 +154,13 @@
                     <input type="radio" name="principal" value="LONGITUDINAL Y TRANSVERSAL" class="accent-blue-600"> LONGITUDINAL Y TRANSVERSAL
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
-                    <input type="radio" name="principal" value="TIPO MALLA" class="accent-blue-600"> TIPO MALLA
+                    <input type="radio" name="principal" value="MALLA PEQUEÑA < 0.3" class="accent-blue-600"> MALLA PEQUEÑA &lt; 0.3
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="MALLA MEDIANA >0.3 <0.5" class="accent-blue-600"> MALLA MEDIANA &gt;0.3 &lt;0.5
+                </label>
+                <label class="flex items-center gap-2 text-sm lg:text-base">
+                    <input type="radio" name="principal" value="MALLA GRANDE > 0.5" class="accent-blue-600"> MALLA GRANDE &gt; 0.5
                 </label>
                 <label class="flex items-center gap-2 text-sm lg:text-base">
                     <input type="radio" name="principal" value="SIN GRIETAS" class="accent-blue-600"> SIN GRIETAS
@@ -278,9 +332,137 @@ const grillaZoomMax = 4;
 let current_x_imagen=0;
 let current_y_imagen=0;
 
+// Variables para medición
+let puntosMedicion = [];
+let tamanioImagen = 0.8; // metros
+
 // Función para obtener la ruta correcta de las imágenes según el drone actual
 function getImagesDir(drone = droneSeleccionado) {
     return BASE_URL + '/imagenes/' + drone + '/grilla/';
+}
+
+// Funciones para medición
+function limpiarMediciones() {
+    // Eliminar elementos de medición existentes
+    document.querySelectorAll('.linea-medicion, .punto-medicion, .texto-medicion').forEach(el => el.remove());
+    puntosMedicion = [];
+}
+
+function obtenerCoordenadasRelativas(event) {
+    // Obtener las coordenadas relativas a la imagen, no al contenedor
+    const img = event.target;
+    const rect = img.getBoundingClientRect();
+    
+    // Calcular coordenadas relativas a la imagen
+    const x = event.clientX - rect.left-3.5;
+    const y = event.clientY - rect.top+15;
+    
+    console.log('Coordenadas del clic - X:', x, 'Y:', y);
+    console.log('Tamaño de la imagen en pantalla - Ancho:', rect.width, 'Alto:', rect.height);
+    
+    return { x, y };
+}
+
+function calcularDistancia(punto1, punto2) {
+    const dx = punto2.x - punto1.x;
+    const dy = punto2.y - punto1.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+function obtenerTamanioImagenActual() {
+    const valor = parseFloat(document.getElementById('tamanio-imagen').value);
+    return valor > 0 ? valor : tamanioImagen; // Usar valor del textbox o el valor por defecto
+}
+
+function convertirPixelesAMetros(pixeles) {
+    const img = document.getElementById('imagen');
+    const rect = img.getBoundingClientRect();
+    
+    // Obtener el valor actual del textbox
+    const tamanioImagenActual = obtenerTamanioImagenActual();
+    
+    // Usar las dimensiones de la imagen en pantalla para el cálculo
+    const escala = tamanioImagenActual / Math.max(rect.width, rect.height);
+    
+    console.log('Escala calculada:', escala, 'metros por píxel');
+    console.log('Tamaño imagen en pantalla:', rect.width, 'x', rect.height);
+    console.log('Tamaño imagen natural:', img.naturalWidth, 'x', img.naturalHeight);
+    
+    return pixeles * escala;
+}
+
+function crearPuntoMedicion(x, y) {
+    const punto = document.createElement('div');
+    punto.className = 'punto-medicion';
+    punto.style.left = (x - 4) + 'px';
+    punto.style.top = (y - 4) + 'px';
+    return punto;
+}
+
+function crearLineaMedicion(x1, y1, x2, y2) {
+    const linea = document.createElement('div');
+    linea.className = 'linea-medicion';
+    
+    const distancia = calcularDistancia({x: x1, y: y1}, {x: x2, y: y2});
+    const angulo = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    
+    linea.style.width = distancia + 'px';
+    linea.style.left = x1 + 'px';
+    linea.style.top = (y1 - 1) + 'px';
+    linea.style.transform = `rotate(${angulo}deg)`;
+    linea.style.transformOrigin = '0 1px';
+    
+    return linea;
+}
+
+function crearTextoMedicion(x, y, distancia) {
+    const texto = document.createElement('div');
+    texto.className = 'texto-medicion';
+    texto.textContent = distancia.toFixed(2) + ' m';
+    texto.style.left = x + 'px';
+    texto.style.top = (y - 20) + 'px';
+    return texto;
+}
+
+function manejarClickMedicion(event) {
+    const coordenadas = obtenerCoordenadasRelativas(event);
+    const contenedor = document.getElementById('contenedor-imagen');
+    
+    // Crear punto de medición
+    const punto = crearPuntoMedicion(coordenadas.x, coordenadas.y);
+    contenedor.appendChild(punto);
+    
+    puntosMedicion.push(coordenadas);
+    
+    // Si hay al menos 2 puntos, crear línea y medición
+    if (puntosMedicion.length >= 2) {
+        const punto1 = puntosMedicion[puntosMedicion.length - 2];
+        const punto2 = puntosMedicion[puntosMedicion.length - 1];
+        
+        // Crear línea
+        const linea = crearLineaMedicion(punto1.x, punto1.y, punto2.x, punto2.y);
+        contenedor.appendChild(linea);
+        
+        // Calcular distancia en metros
+        const distanciaPixeles = calcularDistancia(punto1, punto2);
+        const tamanioActual = obtenerTamanioImagenActual();
+        const distanciaMetros = convertirPixelesAMetros(distanciaPixeles);
+        
+        console.log('Medición realizada con tamaño de imagen:', tamanioActual, 'metros');
+        console.log('Distancia en píxeles:', distanciaPixeles, 'px');
+        console.log('Distancia en metros:', distanciaMetros, 'm');
+        
+        // Crear texto de medición
+        const texto = crearTextoMedicion(
+            (punto1.x + punto2.x) / 2,
+            (punto1.y + punto2.y) / 2,
+            distanciaMetros
+        );
+        contenedor.appendChild(texto);
+        
+        // Limpiar puntos para nueva medición
+        puntosMedicion = [];
+    }
 }
 
 function cargarListaImagenes() {
@@ -330,6 +512,10 @@ async function mostrarImagenActual() {
     const nombreDiv = document.getElementById('nombre-imagen');
     const contadorDiv = document.getElementById('contador-faltantes');
     const enlaceGrilla = document.getElementById('enlace-grilla-global');
+    
+    // Limpiar mediciones al cambiar de imagen
+    limpiarMediciones();
+    
     if (imagenesNoEtiquetadas.length === 0) {
         img.classList.add('hidden');
         nombreDiv.textContent = '';
@@ -641,11 +827,7 @@ document.getElementById('etiqueta-form').addEventListener('submit', function(e) 
     });
 });
 
-// Al hacer clic en la imagen, abrir en nueva pestaña usando el backend
-imagen.addEventListener('click', function() {
-    if (!imagenActual) return;
-    window.open(API + '?img=' + encodeURIComponent(imagenActual) + '&drone=' + droneSeleccionado, '_blank');
-});
+// El event listener para la imagen ahora está manejado en el contenedor para permitir medición
 
 document.getElementById('btn-atras').addEventListener('click', function() {
     if (indiceActual > 0) {
@@ -797,6 +979,47 @@ function zoomGrillaGlobal(newZoom, targetX, targetY) {
     grillaImg.style.left = Math.max(minX, Math.min(maxX, newLeft)) + 'px';
     grillaImg.style.top = Math.max(minY, Math.min(maxY, newTop)) + 'px';
 }
+
+
+
+// Event listener para la imagen - medición directa
+document.getElementById('imagen').addEventListener('click', function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    manejarClickMedicion(event);
+    return false;
+});
+
+// Event listener para actualizar el tamaño de imagen
+document.getElementById('tamanio-imagen').addEventListener('change', function() {
+    const valor = parseFloat(this.value);
+    if (valor > 0) {
+        tamanioImagen = valor;
+        console.log('Tamaño de imagen actualizado a:', tamanioImagen, 'metros');
+    } else {
+        alert('El tamaño de imagen debe ser mayor a 0');
+        this.value = tamanioImagen; // Restaurar valor anterior
+    }
+});
+
+// Event listener para cuando se presiona Enter en el textbox
+document.getElementById('tamanio-imagen').addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        const valor = parseFloat(this.value);
+        if (valor > 0) {
+            tamanioImagen = valor;
+            console.log('Tamaño de imagen actualizado a:', tamanioImagen, 'metros');
+        } else {
+            alert('El tamaño de imagen debe ser mayor a 0');
+            this.value = tamanioImagen; // Restaurar valor anterior
+        }
+    }
+});
+
+// Event listener para borrar mediciones
+document.getElementById('btn-borrar-mediciones').addEventListener('click', function() {
+    limpiarMediciones();
+});
 </script>
 </body>
 </html> 
