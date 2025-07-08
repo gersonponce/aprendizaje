@@ -180,6 +180,7 @@
                     <th class="py-2 px-3 border">Usuario</th>
                     <th class="py-2 px-3 border">Fecha</th>
                     <th class="py-2 px-3 border">Editar</th>
+                    <th class="py-2 px-3 border">Eliminar</th>
                 </tr>
             </thead>
             <tbody id="tabla-registros">
@@ -463,6 +464,36 @@ async function mostrarImagenActual() {
 
 }
 
+// Función para eliminar una etiqueta
+async function eliminarEtiqueta(nombreImagen) {
+    try {
+        const response = await fetch(API, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                imagen: nombreImagen
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+            alert('Etiqueta eliminada correctamente');
+            // Recargar la lista de registros
+            cargarUltimosRegistros();
+            // Recargar la lista de imágenes no etiquetadas
+            cargarListaImagenes();
+        } else {
+            alert('Error al eliminar la etiqueta: ' + (data.msg || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error al eliminar etiqueta:', error);
+        alert('Error al eliminar la etiqueta. Por favor, inténtalo de nuevo.');
+    }
+}
+
 function cargarUltimosRegistros() {
     fetch(API + '?ultimos=1')
         .then(r => r.json())
@@ -487,6 +518,9 @@ function cargarUltimosRegistros() {
                         <td class="border px-2 py-1 text-xs">${reg.fecha}</td>
                         <td class="border px-2 py-1 text-center">
                             <button class="editar-btn px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-yellow-900 font-semibold text-xs" data-img="${reg.nombre_imagen}" data-principal="${reg.etiqueta_principal}" data-secundarias="${reg.etiquetas_secundarias}">Editar</button>
+                        </td>
+                        <td class="border px-2 py-1 text-center">
+                            <button class="eliminar-btn px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-red-900 font-semibold text-xs" data-img="${reg.nombre_imagen}">Eliminar</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -530,6 +564,16 @@ function cargarUltimosRegistros() {
                             console.log('Enlace grilla global:', urlGrilla); // DEPURACIÓN
                         } else {
                             enlaceGrilla.classList.add('hidden');
+                        }
+                    });
+                });
+                
+                // Asignar eventos a los botones de eliminar
+                document.querySelectorAll('.eliminar-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const imagenAEliminar = btn.getAttribute('data-img');
+                        if (confirm(`¿Estás seguro de que quieres eliminar la etiqueta de "${imagenAEliminar}"?`)) {
+                            eliminarEtiqueta(imagenAEliminar);
                         }
                     });
                 });

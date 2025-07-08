@@ -136,6 +136,30 @@ if ($method === 'GET') {
     exit;
 }
 
+if ($method === 'DELETE') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $imagen = $data['imagen'] ?? null;
+    
+    if (!$imagen) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'msg' => 'Falta el nombre de la imagen']);
+        exit;
+    }
+    
+    // Eliminar la etiqueta de la base de datos
+    $stmt = $pdo->prepare('DELETE FROM etiquetas WHERE nombre_imagen = ?');
+    $stmt->bindParam(1, $imagen, PDO::PARAM_STR);
+    
+    $ok = $stmt->execute();
+    if ($ok) {
+        echo json_encode(['status' => 'ok', 'msg' => 'Etiqueta eliminada correctamente']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'msg' => 'No se pudo eliminar la etiqueta']);
+    }
+    exit;
+}
+
 if ($method === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     $imagen = $data['imagen'] ?? null;
@@ -200,6 +224,6 @@ if ($method === 'POST') {
     }
 }
 
-// Si no es GET ni POST
+// Si no es GET, POST ni DELETE
 http_response_code(405);
 echo json_encode(['status' => 'error', 'msg' => 'Método no permitido']); 
