@@ -80,6 +80,17 @@ if ($method === 'GET') {
             exit;
         }
     }
+    // Si se pide total_usuario=usuario, devolver el total de imágenes etiquetadas por ese usuario
+    if (isset($_GET['total_usuario'])) {
+        $usuario = $_GET['total_usuario'];
+        $stmt = $pdo->prepare('SELECT COUNT(*) as total FROM etiquetas WHERE usuario = ?');
+        $stmt->bindParam(1, $usuario, PDO::PARAM_STR);
+        $stmt->execute();
+        $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+        echo json_encode(['status' => 'ok', 'total' => $resultado['total']]);
+        exit;
+    }
+    
     // Si se pide ultimos=1, devolver los últimos 50 registros
     if (isset($_GET['ultimos'])) {
         $stmt = $pdo->query('SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha FROM etiquetas ORDER BY fecha DESC LIMIT 50');

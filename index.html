@@ -223,6 +223,8 @@
         <h3 class="text-base lg:text-lg font-semibold">Últimos 50 registros</h3>
         <div class="text-sm text-blue-600 font-medium">
             <span id="contador-usuario">Imágenes etiquetadas por ti: 0</span>
+            <span class="mx-2">|</span>
+            <span id="contador-total-usuario">Total etiquetadas por ti: 0</span>
         </div>
     </div>
     <div class="overflow-x-auto">
@@ -682,6 +684,24 @@ async function eliminarEtiqueta(nombreImagen) {
     }
 }
 
+function cargarTotalUsuario() {
+    // Obtener el usuario actual
+    const userInfo = JSON.parse(sessionStorage.getItem('user'));
+    const usuarioActual = userInfo ? userInfo.username : 'desconocido';
+    
+    // Hacer una consulta para obtener el total de imágenes etiquetadas por el usuario
+    fetch(API + '?total_usuario=' + encodeURIComponent(usuarioActual))
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                document.getElementById('contador-total-usuario').textContent = `Total etiquetadas por ti: ${data.total}`;
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar total del usuario:', error);
+        });
+}
+
 function cargarUltimosRegistros() {
     fetch(API + '?ultimos=1')
         .then(r => r.json())
@@ -784,6 +804,9 @@ function cargarUltimosRegistros() {
             
             // Actualizar el contador del usuario
             document.getElementById('contador-usuario').textContent = `Imágenes etiquetadas por ti: ${contadorUsuario}`;
+            
+            // Cargar el total de imágenes etiquetadas por el usuario
+            cargarTotalUsuario();
         });
 }
 
@@ -791,6 +814,7 @@ function cargarUltimosRegistros() {
 window.onload = function() {
     cargarListaImagenes();
     cargarUltimosRegistros();
+    cargarTotalUsuario();
     
     // Event listener para el botón de logout
     document.getElementById('logout-btn').addEventListener('click', logout);
@@ -798,6 +822,7 @@ window.onload = function() {
 
 function actualizarRegistrosDespuesDeEtiquetar() {
     cargarUltimosRegistros();
+    cargarTotalUsuario();
 }
 
 document.getElementById('etiqueta-form').addEventListener('submit', function(e) {
