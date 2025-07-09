@@ -91,9 +91,12 @@ if ($method === 'GET') {
         exit;
     }
     
-    // Si se pide ultimos=1, devolver los últimos 50 registros
+    // Si se pide ultimos=1, devolver los últimos 50 registros del usuario actual
     if (isset($_GET['ultimos'])) {
-        $stmt = $pdo->query('SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha FROM etiquetas ORDER BY fecha DESC LIMIT 50');
+        $usuario = $_SESSION['user']['username'] ?? 'desconocido';
+        $stmt = $pdo->prepare('SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha FROM etiquetas WHERE usuario = ? ORDER BY fecha DESC LIMIT 50');
+        $stmt->bindParam(1, $usuario, PDO::PARAM_STR);
+        $stmt->execute();
         $registros = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             // Ajustar la fecha a Lima

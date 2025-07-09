@@ -220,9 +220,8 @@
 <!-- Tabla de últimos registros -->
 <div class="max-w-5xl mx-auto mt-8 lg:mt-16 mb-10 bg-white rounded-lg shadow p-4 lg:p-6">
     <div class="flex justify-between items-center mb-4">
-        <h3 class="text-base lg:text-lg font-semibold">Últimos 50 registros</h3>
+        <h3 class="text-base lg:text-lg font-semibold">Mis últimos registros</h3>
         <div class="text-sm text-blue-600 font-medium">
-
             <span id="contador-total-usuario">Total etiquetadas por ti: 0</span>
         </div>
     </div>
@@ -708,20 +707,8 @@ function cargarUltimosRegistros() {
             const tbody = document.getElementById('tabla-registros');
             tbody.innerHTML = '';
             
-            // Obtener el usuario actual
-            const userInfo = JSON.parse(sessionStorage.getItem('user'));
-            const usuarioActual = userInfo ? userInfo.username : 'desconocido';
-            
-            // Contar imágenes del usuario actual
-            let contadorUsuario = 0;
-            
             if (data.status === 'ok' && data.registros.length > 0) {
                 data.registros.forEach(reg => {
-                    // Contar si es del usuario actual
-                    if (reg.usuario === usuarioActual) {
-                        contadorUsuario++;
-                    }
-                    
                     const tr = document.createElement('tr');
                     // Formatear coordenadas
                     const coordenadas = reg.X && reg.Y ? `${reg.X}, ${reg.Y}` : '-';
@@ -798,11 +785,8 @@ function cargarUltimosRegistros() {
                     });
                 });
             } else {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Sin registros</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No tienes registros aún</td></tr>';
             }
-            
-            // Actualizar el contador del usuario
-            //document.getElementById('contador-usuario').textContent = `Imágenes etiquetadas por ti: ${contadorUsuario}`;
             
             // Cargar el total de imágenes etiquetadas por el usuario
             cargarTotalUsuario();
