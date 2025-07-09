@@ -587,7 +587,7 @@ foreach ($imagenes as $index => $imagen) {
     <div class="bg-white rounded-lg shadow p-6 mt-6">
         <h3 class="text-lg font-semibold mb-4">Visualización de la ruta del drone</h3>
         <p class="text-sm text-gray-600 mb-4">
-            Gráfico de los puntos GPS de las imágenes. Los puntos se conectan en orden secuencial. Los rectángulos muestran el área cubierta por cada foto con dimensiones configurables. El lado largo está perpendicular a la ruta y el lado ancho está paralelo. Las dimensiones se pueden ajustar en la sección de configuración.
+            Gráfico de los puntos GPS de las imágenes. Los puntos se conectan en orden secuencial. Los rectángulos muestran el área cubierta por cada foto con dimensiones configurables. El lado largo está perpendicular a la ruta y el lado ancho está paralelo. Las dimensiones se pueden ajustar en la sección de configuración. La brújula en la esquina superior derecha indica la orientación geográfica (Norte hacia arriba).
         </p>
         <div class="flex items-center space-x-4 mb-4">
             <label class="flex items-center space-x-2 text-sm">
@@ -623,6 +623,10 @@ foreach ($imagenes as $index => $imagen) {
             <div class="flex items-center space-x-2">
                 <div class="w-4 h-4 bg-green-500 bg-opacity-30 border border-green-500"></div>
                 <span>Área fotos</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-4 h-4 bg-red-500 rounded-full"></div>
+                <span>Norte (N)</span>
             </div>
         </div>
         <div class="relative">
@@ -736,6 +740,61 @@ foreach ($imagenes as $index => $imagen) {
                 const x = ((long - (minLong - longMargin)) / ((maxLong + longMargin) - (minLong - longMargin))) * canvas.width;
                 const y = canvas.height - ((lat - (minLat - latMargin)) / ((maxLat + latMargin) - (minLat - latMargin))) * canvas.height;
                 return { x, y };
+            }
+            
+            // Función para dibujar la brújula del norte
+            function dibujarBrujula() {
+                const centerX = canvas.width - 60;
+                const centerY = 60;
+                const radius = 25;
+                
+                // Círculo de la brújula
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Flecha del norte
+                ctx.fillStyle = '#DC2626';
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - radius + 5);
+                ctx.lineTo(centerX - 8, centerY - radius + 15);
+                ctx.lineTo(centerX + 8, centerY - radius + 15);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Texto "N"
+                ctx.fillStyle = '#DC2626';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('N', centerX, centerY - radius + 10);
+                
+                // Marcas de dirección
+                ctx.strokeStyle = '#6B7280';
+                ctx.lineWidth = 1;
+                const directions = ['E', 'S', 'W'];
+                const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
+                
+                for (let i = 0; i < 4; i++) {
+                    const angle = angles[i];
+                    const x = centerX + (radius - 8) * Math.cos(angle);
+                    const y = centerY + (radius - 8) * Math.sin(angle);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    
+                    if (i < 3) {
+                        ctx.fillStyle = '#6B7280';
+                        ctx.font = '10px Arial';
+                        ctx.fillText(directions[i], x + 5 * Math.cos(angle), y + 5 * Math.sin(angle));
+                    }
+                }
             }
             
             // Función para calcular la orientación de la foto basada en la ruta
@@ -884,6 +943,9 @@ foreach ($imagenes as $index => $imagen) {
                 ctx.textBaseline = 'middle';
                 ctx.fillText(punto.index, pixel.x, pixel.y);
             });
+            
+            // Dibujar brújula del norte
+            dibujarBrujula();
             
             // Información del gráfico
             const areaTotal = coordenadasGPS.length * fotoLargo * fotoAncho;
