@@ -94,13 +94,14 @@
             <div class="mb-3 w-full flex flex-col items-center">
                 <label for="select-drone" class="block mb-1 text-gray-700 font-semibold text-sm lg:text-base">Selecciona el drone:</label>
                 <select id="select-drone" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm lg:text-base w-full max-w-xs">
+                    <option value="" selected disabled>Selecciona un drone</option>
                     <option value="DRONE_0">DRONE_0</option>
                     <option value="DRONE_1">DRONE_1</option>
                     <option value="DRONE_2">DRONE_2</option>
                     <option value="DRONE_3">DRONE_3</option>
                     <option value="DRONE_4">DRONE_4</option>
                     <option value="DRONE_5">DRONE_5</option>
-                    <option value="DRONE_6" selected>DRONE_6</option>
+                    <option value="DRONE_6">DRONE_6</option>
                     <option value="DRONE_7">DRONE_7</option>
                     <option value="DRONE_8">DRONE_8</option>
                     <option value="DRONE_9">DRONE_9</option>
@@ -321,7 +322,8 @@ if (!checkAuth()) {
 
 // BASE_URL ya está definido en config.js
 const API = BASE_URL + '/api.php';
-let droneSeleccionado = 'DRONE_6';
+// Cambiar la variable droneSeleccionado para que inicie vacía
+let droneSeleccionado = '';
 let imagenActual = null;
 let imagenesNoEtiquetadas = [];
 let indiceActual = 0;
@@ -713,12 +715,9 @@ function cargarUltimosRegistros() {
             if (data.status === 'ok' && data.registros.length > 0) {
                 data.registros.forEach(reg => {
                     const tr = document.createElement('tr');
-                    // Formatear coordenadas
-                    const coordenadas = reg.X && reg.Y ? `${reg.X}, ${reg.Y}` : '-';
-                    
+                    // Modificación: Solo mostrar el nombre, no la miniatura
                     tr.innerHTML = `
                         <td class="border px-2 py-1">
-                            <img src="${API}?img=${encodeURIComponent(reg.nombre_imagen)}&drone=${droneSeleccionado}" alt="${reg.nombre_imagen}" class="h-12 max-w-[80px] object-contain rounded cursor-pointer hover:opacity-80 transition-opacity" loading="lazy" onclick="window.open('${API}?img=${encodeURIComponent(reg.nombre_imagen)}&drone=${droneSeleccionado}', '_blank')">
                             <div class="text-xs text-gray-500">${reg.nombre_imagen}</div>
                         </td>
                         <td class="border px-2 py-1 text-xs">${reg.imagen_original || '-'}</td>
@@ -798,7 +797,10 @@ function cargarUltimosRegistros() {
 
 // Llamar al cargar la página y cada vez que se guarda una etiqueta
 window.onload = function() {
-    cargarListaImagenes();
+    // Modificación: No cargar ni mostrar imagen al inicio
+    imagenesNoEtiquetadas = [];
+    indiceActual = 0;
+    mostrarImagenActual();
     cargarUltimosRegistros();
     cargarTotalUsuario();
     
@@ -908,8 +910,10 @@ document.getElementById('cancelar-edicion').addEventListener('click', function()
 
 document.getElementById('select-drone').addEventListener('change', function(e) {
     droneSeleccionado = e.target.value;
-    cargarCSVGrilla(droneSeleccionado);
-    cargarListaImagenes();
+    if (droneSeleccionado) {
+        cargarCSVGrilla(droneSeleccionado);
+        cargarListaImagenes();
+    }
 });
 
 // Drag para la imagen grilla global
