@@ -40,25 +40,25 @@ function obtenerNombreDrone(string $nombreArchivo): string
     return "DRONE_" . $numeroDrone;
 }
 
-function obtenerImagenesExcluidas($pdo): array
+function obtenerImagenesPermitidas($pdo): array
 {
-    $stmt = $pdo->query('SELECT foto_nombre FROM excepto');
-    $excluidas = [];
+    $stmt = $pdo->query('SELECT foto_nombre FROM filtro_fotos');
+    $permitidas = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $excluidas[] = $row['foto_nombre'];
+        $permitidas[] = $row['foto_nombre'];
     }
-    return $excluidas;
+    return $permitidas;
 }
 
-function filtrarImagenesExcluidas($imagenes, $excluidas): array
+function filtrarImagenesPermitidas($imagenes, $permitidas): array
 {
-    return array_filter($imagenes, function($imagen) use ($excluidas) {
-        foreach ($excluidas as $excluida) {
-            if (strpos($imagen, $excluida) === 0) {
-                return false; // Excluir esta imagen
+    return array_filter($imagenes, function($imagen) use ($permitidas) {
+        foreach ($permitidas as $permitida) {
+            if (strpos($imagen, $permitida) === 0) {
+                return true; // Incluir esta imagen
             }
         }
-        return true; // Incluir esta imagen
+        return false; // Excluir esta imagen
     });
 }
 
@@ -136,11 +136,11 @@ if ($method === 'GET') {
         $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
         $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
         
-        // Obtener imágenes excluidas de la tabla excepto
-        $excluidas = obtenerImagenesExcluidas($pdo);
+        // Obtener imágenes permitidas de la tabla filtro_fotos
+        $permitidas = obtenerImagenesPermitidas($pdo);
         
-        // Filtrar imágenes excluidas
-        $imagenes = filtrarImagenesExcluidas($imagenes, $excluidas);
+        // Filtrar solo las imágenes permitidas
+        $imagenes = filtrarImagenesPermitidas($imagenes, $permitidas);
         
         // Actualizar la variable global para servir imágenes
         global $imagenes_dir;
@@ -163,11 +163,11 @@ if ($method === 'GET') {
     $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
     $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
     
-    // Obtener imágenes excluidas de la tabla excepto
-    $excluidas = obtenerImagenesExcluidas($pdo);
+    // Obtener imágenes permitidas de la tabla filtro_fotos
+    $permitidas = obtenerImagenesPermitidas($pdo);
     
-    // Filtrar imágenes excluidas
-    $imagenes = filtrarImagenesExcluidas($imagenes, $excluidas);
+    // Filtrar solo las imágenes permitidas
+    $imagenes = filtrarImagenesPermitidas($imagenes, $permitidas);
     
     $stmt = $pdo->query('SELECT nombre_imagen FROM etiquetas');
     $etiquetadas = [];
