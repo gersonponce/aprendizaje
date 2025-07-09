@@ -40,6 +40,28 @@ function obtenerNombreDrone(string $nombreArchivo): string
     return "DRONE_" . $numeroDrone;
 }
 
+function obtenerImagenesExcluidas($pdo): array
+{
+    $stmt = $pdo->query('SELECT foto_nombre FROM excepto');
+    $excluidas = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $excluidas[] = $row['foto_nombre'];
+    }
+    return $excluidas;
+}
+
+function filtrarImagenesExcluidas($imagenes, $excluidas): array
+{
+    return array_filter($imagenes, function($imagen) use ($excluidas) {
+        foreach ($excluidas as $excluida) {
+            if (strpos($imagen, $excluida) === 0) {
+                return false; // Excluir esta imagen
+            }
+        }
+        return true; // Incluir esta imagen
+    });
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
@@ -113,9 +135,17 @@ if ($method === 'GET') {
         $drone = isset($_GET['drone']) ? basename($_GET['drone']) : 'DRONE_6';
         $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
         $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
+        
+        // Obtener imágenes excluidas de la tabla excepto
+        $excluidas = obtenerImagenesExcluidas($pdo);
+        
+        // Filtrar imágenes excluidas
+        $imagenes = filtrarImagenesExcluidas($imagenes, $excluidas);
+        
         // Actualizar la variable global para servir imágenes
         global $imagenes_dir;
         $imagenes_dir = $imagenes_dir_drone;
+        
         $stmt = $pdo->query('SELECT nombre_imagen FROM etiquetas');
         $etiquetadas = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -132,6 +162,13 @@ if ($method === 'GET') {
     $drone = 'DRONE_6';
     $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
     $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
+    
+    // Obtener imágenes excluidas de la tabla excepto
+    $excluidas = obtenerImagenesExcluidas($pdo);
+    
+    // Filtrar imágenes excluidas
+    $imagenes = filtrarImagenesExcluidas($imagenes, $excluidas);
+    
     $stmt = $pdo->query('SELECT nombre_imagen FROM etiquetas');
     $etiquetadas = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
