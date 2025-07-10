@@ -417,10 +417,13 @@
             // Limpiar formulario
             document.getElementById('etiqueta-form').reset();
 
-            // Marcar etiquetas principales
+            // Marcar etiquetas principales (pueden ser múltiples)
             if (imagenActual.etiqueta_principal) {
-                const checkbox = document.querySelector(`input[name="principal"][value="${imagenActual.etiqueta_principal}"]`);
-                if (checkbox) checkbox.checked = true;
+                const etiquetasPrincipales = imagenActual.etiqueta_principal.split(',');
+                etiquetasPrincipales.forEach(etiqueta => {
+                    const checkbox = document.querySelector(`input[name="principal"][value="${etiqueta.trim()}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
             }
 
             // Marcar etiquetas secundarias
@@ -473,11 +476,6 @@
                 return;
             }
 
-            if (etiquetasPrincipales.length > 1) {
-                alert('Solo puede seleccionar una etiqueta principal');
-                return;
-            }
-
             try {
                 const userInfo = JSON.parse(sessionStorage.getItem('user'));
                 
@@ -507,7 +505,7 @@
                     mostrarAvisoGuardado(imagenActual.nombre_imagen);
                     
                     // Actualizar la imagen actual en la lista
-                    imagenActual.etiqueta_principal = etiquetasPrincipales[0];
+                    imagenActual.etiqueta_principal = etiquetasPrincipales.join(',');
                     imagenActual.etiquetas_secundarias = etiquetasSecundarias.join(',');
                     
                     // Pasar a la siguiente imagen si hay más imágenes
