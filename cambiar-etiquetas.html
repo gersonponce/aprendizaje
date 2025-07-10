@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cambiar Etiquetas - Sistema de Etiquetado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    <style>
+        /* Lupa personalizada flotante */
+        #lupa {
+            display: none;
+            position: absolute;
+            border: 2px solid #1976d2;
+            border-radius: 50%;
+            width: 160px;
+            height: 160px;
+            overflow: hidden;
+            pointer-events: none;
+            box-shadow: 0 2px 8px #0002;
+            z-index: 1000;
+        }
+        #lupa-img {
+            position: absolute;
+            transform: scale(2);
+            transform-origin: top left;
+        }
+        .img-lupa-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        /* Estilos para medición */
+        .imagen-medicion {
+            position: relative;
+            cursor: crosshair;
+        }
+        
+        .linea-medicion {
+            position: absolute;
+            background-color: #ff0000;
+            height: 2px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .punto-medicion {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #ff0000;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 101;
+        }
+        
+        .texto-medicion {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 102;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header con información del usuario y botón de logout -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-2 lg:gap-0">
+            <div class="flex items-center space-x-4 text-center lg:text-left">
+                <h1 class="text-sm lg:text-lg xl:text-xl font-bold text-blue-900 leading-tight">MODELO BASADO EN MACHINE LEARNING PARA IDENTIFICAR GRIETAS MEDIANTE EL USO DE DRON EN EL PAVIMENTO ASFÁLTICO DE LA Av. CIRCUNVALACIÓN DE LA CIUDAD DE PUNO</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-info" class="text-xs lg:text-sm text-gray-600"></span>
+                <a href="index.html" class="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs lg:text-sm font-medium transition duration-200">
+                    Etiquetar
+                </a>
+                <a href="estadisticas.php" class="px-3 lg:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs lg:text-sm font-medium transition duration-200">
+                    Estadísticas
+                </a>
+                <button id="logout-btn" class="px-3 lg:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs lg:text-sm font-medium transition duration-200">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de etiquetas en la parte superior -->
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Filtros de Etiquetas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="filtro-principal" class="block text-sm font-medium text-gray-700 mb-2">Etiqueta Principal:</label>
+                    <select id="filtro-principal" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Todas las etiquetas principales</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filtro-secundaria" class="block text-sm font-medium text-gray-700 mb-2">Etiqueta Secundaria:</label>
+                    <select id="filtro-secundaria" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Todas las etiquetas secundarias</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-4">
+                <button id="btn-filtrar" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition duration-200">
+                    Filtrar
+                </button>
+                <button id="btn-limpiar-filtros" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md font-medium transition duration-200">
+                    Limpiar Filtros
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <!-- Información de la imagen actual -->
+            <div class="mb-6 text-center">
+                <div id="contador-imagenes" class="text-lg font-semibold text-blue-700 mb-2"></div>
+                <div id="nombre-imagen" class="text-sm text-gray-600 mb-4"></div>
+            </div>
+
+            <!-- Imagen -->
+            <div class="flex justify-center mb-6">
+                <div class="img-lupa-container">
+                    <div class="relative inline-block imagen-medicion" id="contenedor-imagen">
+                        <img id="imagen" src="" alt="Imagen a editar" class="max-w-full max-h-[500px] mx-auto cursor-crosshair hidden">
+                    </div>
+                    <div id="lupa">
+                        <img id="lupa-img" src="" alt="Zoom">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controles de navegación -->
+            <div class="flex justify-center gap-4 mb-6">
+                <button id="btn-atras" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold" disabled>Atrás</button>
+                <button id="btn-adelante" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold" disabled>Adelante</button>
+            </div>
+
+            <!-- Formulario de etiquetas -->
+            <form id="etiqueta-form" class="max-w-2xl mx-auto">
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Etiquetas Principales:</h3>
+                    <div id="etiquetas-principales-container" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-4">Etiquetas Secundarias:</h3>
+                    <div id="etiquetas-secundarias-container" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" id="guardar-btn" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded transition disabled:bg-gray-400">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Verificación de autenticación
+        function checkAuth() {
+            const isAuthenticated = sessionStorage.getItem('isAuthenticated');
+            const user = sessionStorage.getItem('user');
+            
+            if (!isAuthenticated || !user) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // Mostrar información del usuario
+            const userInfo = JSON.parse(user);
+            document.getElementById('user-info').textContent = `Usuario: ${userInfo.username} (${userInfo.role})`;
+            return true;
+        }
+
+        // Función de logout
+        async function logout() {
+            try {
+                await fetch('logout.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+            } finally {
+                // Limpiar sessionStorage y redirigir
+                sessionStorage.removeItem('isAuthenticated');
+                sessionStorage.removeItem('user');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Verificar autenticación al cargar la página
+        if (!checkAuth()) {
+            throw new Error('No autenticado');
+        }
+
+        // Variables globales
+        const API = BASE_URL + '/api.php';
+        let imagenesFiltradas = [];
+        let indiceActual = 0;
+        let imagenActual = null;
+
+        // Función para cargar las etiquetas disponibles desde la base de datos
+        async function cargarEtiquetasDisponibles() {
+            try {
+                const response = await fetch(`${API}?etiquetas_disponibles=1`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Cargar etiquetas principales en los filtros
+                    const selectPrincipal = document.getElementById('filtro-principal');
+                    data.data.principales.forEach(etiqueta => {
+                        const option = document.createElement('option');
+                        option.value = etiqueta.valor;
+                        option.textContent = `${etiqueta.valor} (${etiqueta.cantidad})`;
+                        selectPrincipal.appendChild(option);
+                    });
+
+                    // Cargar etiquetas secundarias en los filtros
+                    const selectSecundaria = document.getElementById('filtro-secundaria');
+                    data.data.secundarias.forEach(etiqueta => {
+                        const option = document.createElement('option');
+                        option.value = etiqueta.valor;
+                        option.textContent = `${etiqueta.valor} (${etiqueta.cantidad})`;
+                        selectSecundaria.appendChild(option);
+                    });
+
+                    // Cargar etiquetas principales en el formulario
+                    const containerPrincipal = document.getElementById('etiquetas-principales-container');
+                    containerPrincipal.innerHTML = '';
+                    data.data.principales.forEach(etiqueta => {
+                        const label = document.createElement('label');
+                        label.className = 'flex items-center gap-2';
+                        label.innerHTML = `
+                            <input type="checkbox" name="principal" value="${etiqueta.valor}" class="accent-blue-600"> 
+                            ${etiqueta.valor} (${etiqueta.cantidad})
+                        `;
+                        containerPrincipal.appendChild(label);
+                    });
+
+                    // Cargar etiquetas secundarias en el formulario
+                    const containerSecundaria = document.getElementById('etiquetas-secundarias-container');
+                    containerSecundaria.innerHTML = '';
+                    data.data.secundarias.forEach(etiqueta => {
+                        const label = document.createElement('label');
+                        label.className = 'flex items-center gap-2';
+                        label.innerHTML = `
+                            <input type="checkbox" name="secundarias" value="${etiqueta.valor}" class="accent-blue-600"> 
+                            ${etiqueta.valor} (${etiqueta.cantidad})
+                        `;
+                        containerSecundaria.appendChild(label);
+                    });
+                } else {
+                    console.error('Error al cargar etiquetas disponibles:', data.message);
+                }
+            } catch (error) {
+                console.error('Error al cargar etiquetas disponibles:', error);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        document.getElementById('btn-filtrar').addEventListener('click', filtrarImagenes);
+        document.getElementById('btn-limpiar-filtros').addEventListener('click', limpiarFiltros);
+        document.getElementById('btn-atras').addEventListener('click', imagenAnterior);
+        document.getElementById('btn-adelante').addEventListener('click', imagenSiguiente);
+        document.getElementById('etiqueta-form').addEventListener('submit', guardarCambios);
+
+        // Función para filtrar imágenes
+        async function filtrarImagenes() {
+            const etiquetaPrincipal = document.getElementById('filtro-principal').value;
+            const etiquetaSecundaria = document.getElementById('filtro-secundaria').value;
+
+            try {
+                const params = new URLSearchParams();
+                if (etiquetaPrincipal) params.append('etiqueta_principal', etiquetaPrincipal);
+                if (etiquetaSecundaria) params.append('etiqueta_secundaria', etiquetaSecundaria);
+
+                const response = await fetch(`${API}?${params.toString()}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    imagenesFiltradas = data.data;
+                    indiceActual = 0;
+                    mostrarImagenActual();
+                } else {
+                    alert('Error al filtrar imágenes: ' + (data.message || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+            }
+        }
+
+        // Función para limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('filtro-principal').value = '';
+            document.getElementById('filtro-secundaria').value = '';
+            imagenesFiltradas = [];
+            indiceActual = 0;
+            imagenActual = null;
+            document.getElementById('imagen').classList.add('hidden');
+            document.getElementById('contador-imagenes').textContent = '';
+            document.getElementById('nombre-imagen').textContent = '';
+            document.getElementById('etiqueta-form').reset();
+            actualizarBotonesNavegacion();
+        }
+
+        // Función para mostrar la imagen actual
+        function mostrarImagenActual() {
+            if (imagenesFiltradas.length === 0) {
+                document.getElementById('imagen').classList.add('hidden');
+                document.getElementById('contador-imagenes').textContent = 'No hay imágenes que coincidan con los filtros';
+                document.getElementById('nombre-imagen').textContent = '';
+                document.getElementById('etiqueta-form').reset();
+                actualizarBotonesNavegacion();
+                return;
+            }
+
+            imagenActual = imagenesFiltradas[indiceActual];
+            const img = document.getElementById('imagen');
+            
+            // Construir la ruta de la imagen
+            const drone = obtenerNombreDrone(imagenActual.nombre_imagen);
+            const rutaImagen = `/imagenes/${drone}/grilla/${imagenActual.nombre_imagen}`;
+            img.src = BASE_URL + rutaImagen;
+            img.classList.remove('hidden');
+            
+            document.getElementById('contador-imagenes').textContent = `Imagen ${indiceActual + 1} de ${imagenesFiltradas.length}`;
+            document.getElementById('nombre-imagen').textContent = imagenActual.nombre_imagen;
+
+            // Cargar etiquetas actuales
+            cargarEtiquetasActuales();
+            actualizarBotonesNavegacion();
+        }
+
+        // Función para cargar las etiquetas actuales
+        function cargarEtiquetasActuales() {
+            // Limpiar formulario
+            document.getElementById('etiqueta-form').reset();
+
+            // Marcar etiquetas principales
+            if (imagenActual.etiqueta_principal) {
+                const checkbox = document.querySelector(`input[name="principal"][value="${imagenActual.etiqueta_principal}"]`);
+                if (checkbox) checkbox.checked = true;
+            }
+
+            // Marcar etiquetas secundarias
+            if (imagenActual.etiquetas_secundarias) {
+                const etiquetasSecundarias = imagenActual.etiquetas_secundarias.split(',');
+                etiquetasSecundarias.forEach(etiqueta => {
+                    const checkbox = document.querySelector(`input[name="secundarias"][value="${etiqueta.trim()}"]`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+        }
+
+        // Función para actualizar botones de navegación
+        function actualizarBotonesNavegacion() {
+            document.getElementById('btn-atras').disabled = indiceActual === 0;
+            document.getElementById('btn-adelante').disabled = indiceActual >= imagenesFiltradas.length - 1;
+        }
+
+        // Función para ir a la imagen anterior
+        function imagenAnterior() {
+            if (indiceActual > 0) {
+                indiceActual--;
+                mostrarImagenActual();
+            }
+        }
+
+        // Función para ir a la imagen siguiente
+        function imagenSiguiente() {
+            if (indiceActual < imagenesFiltradas.length - 1) {
+                indiceActual++;
+                mostrarImagenActual();
+            }
+        }
+
+        // Función para guardar cambios
+        async function guardarCambios(event) {
+            event.preventDefault();
+
+            if (!imagenActual) {
+                alert('No hay imagen seleccionada');
+                return;
+            }
+
+            // Obtener etiquetas seleccionadas
+            const etiquetasPrincipales = Array.from(document.querySelectorAll('input[name="principal"]:checked')).map(cb => cb.value);
+            const etiquetasSecundarias = Array.from(document.querySelectorAll('input[name="secundarias"]:checked')).map(cb => cb.value);
+
+            if (etiquetasPrincipales.length === 0) {
+                alert('Debe seleccionar al menos una etiqueta principal');
+                return;
+            }
+
+            if (etiquetasPrincipales.length > 1) {
+                alert('Solo puede seleccionar una etiqueta principal');
+                return;
+            }
+
+            try {
+                const userInfo = JSON.parse(sessionStorage.getItem('user'));
+                
+                // Preparar datos para la API
+                const requestData = {
+                    imagen: imagenActual.nombre_imagen,
+                    principales: etiquetasPrincipales,
+                    secundarias: etiquetasSecundarias,
+                    editar: true,
+                    x_imagen: imagenActual.x_imagen,
+                    y_imagen: imagenActual.y_imagen,
+                    drone_sel: obtenerNombreDrone(imagenActual.nombre_imagen)
+                };
+
+                const response = await fetch(API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    alert('Cambios guardados exitosamente');
+                    // Actualizar la imagen actual en la lista
+                    imagenActual.etiqueta_principal = etiquetasPrincipales[0];
+                    imagenActual.etiquetas_secundarias = etiquetasSecundarias.join(',');
+                } else {
+                    alert('Error al guardar: ' + (data.msg || 'Error desconocido'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+            }
+        }
+
+        // Función para obtener el nombre del drone desde el nombre de la imagen
+        function obtenerNombreDrone(nombreArchivo) {
+            const numeroExtraido = nombreArchivo.substring(4, 6);
+            const numeroDrone = parseInt(numeroExtraido);
+            return "DRONE_" + numeroDrone;
+        }
+
+        // Inicializar página
+        cargarEtiquetasDisponibles().then(() => {
+            limpiarFiltros();
+        });
+    </script>
+</body>
+</html> 
