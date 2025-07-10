@@ -151,11 +151,7 @@
                     </div>
                 </div>
 
-                <!-- Controles de navegación -->
-                <div class="flex justify-center gap-4 mb-4">
-                    <button id="btn-atras" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold" disabled>Atrás</button>
-                    <button id="btn-adelante" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold" disabled>Adelante</button>
-                </div>
+
             </div>
 
             <!-- Columna derecha: Formulario de etiquetas -->
@@ -177,9 +173,15 @@
                         </div>
                     </div>
 
-                    <div class="text-center">
-                        <button type="submit" id="guardar-btn" class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded transition disabled:bg-gray-400">
+                    <div class="flex gap-2">
+                        <button type="button" id="btn-atras" class="flex-1 px-4 py-3 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold transition disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                            Atrás
+                        </button>
+                        <button type="submit" id="guardar-btn" class="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded transition disabled:bg-gray-400">
                             Guardar Cambios
+                        </button>
+                        <button type="button" id="btn-adelante" class="flex-1 px-4 py-3 bg-gray-200 rounded hover:bg-gray-300 text-gray-700 font-semibold transition disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                            Adelante
                         </button>
                     </div>
                 </form>
