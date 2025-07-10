@@ -497,6 +497,15 @@
                     // Actualizar la imagen actual en la lista
                     imagenActual.etiqueta_principal = etiquetasPrincipales[0];
                     imagenActual.etiquetas_secundarias = etiquetasSecundarias.join(',');
+                    
+                    // Pasar a la siguiente imagen si hay más imágenes
+                    if (indiceActual < imagenesFiltradas.length - 1) {
+                        indiceActual++;
+                        mostrarImagenActual();
+                    } else {
+                        // Si es la última imagen, mostrar mensaje
+                        alert('Has llegado al final de las imágenes filtradas');
+                    }
                 } else {
                     alert('Error al guardar: ' + (data.msg || 'Error desconocido'));
                 }
