@@ -1,11 +1,6 @@
 <?php
-// Verificar autenticación
+// Verificar autenticación solo para operaciones que lo requieran
 session_start();
-if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
-    http_response_code(401);
-    echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
-    exit;
-}
 
 // Incluir configuración de base de datos
 require_once 'database.php';
@@ -104,6 +99,13 @@ if ($method === 'GET') {
     }
     // Si se pide total_usuario=usuario, devolver el total de imágenes etiquetadas por ese usuario
     if (isset($_GET['total_usuario'])) {
+        // Verificar autenticación para operaciones de usuario específico
+        if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+            exit;
+        }
+        
         $usuario = $_GET['total_usuario'];
         $stmt = $pdo->prepare('SELECT COUNT(*) as total FROM etiquetas WHERE usuario = ?');
         $stmt->bindParam(1, $usuario, PDO::PARAM_STR);
@@ -115,6 +117,13 @@ if ($method === 'GET') {
     
     // Si se pide ultimos=1, devolver los últimos 50 registros del usuario actual
     if (isset($_GET['ultimos'])) {
+        // Verificar autenticación para operaciones de usuario específico
+        if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+            exit;
+        }
+        
         $usuario = $_SESSION['user']['username'] ?? 'desconocido';
         $stmt = $pdo->prepare('SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha FROM etiquetas WHERE usuario = ? ORDER BY fecha DESC LIMIT 50');
         $stmt->bindParam(1, $usuario, PDO::PARAM_STR);
@@ -130,8 +139,108 @@ if ($method === 'GET') {
         echo json_encode(['status' => 'ok', 'registros' => $registros]);
         exit;
     }
+    
+    // Si se pide filtrar por etiquetas, devolver imágenes que coincidan con los filtros
+    if (isset($_GET['etiqueta_principal']) || isset($_GET['etiqueta_secundaria'])) {
+        $where_conditions = [];
+        $params = [];
+        $param_count = 1;
+        
+        if (isset($_GET['etiqueta_principal']) && !empty($_GET['etiqueta_principal'])) {
+            $where_conditions[] = "etiqueta_principal = ?";
+            $params[] = $_GET['etiqueta_principal'];
+            $param_count++;
+        }
+        
+        if (isset($_GET['etiqueta_secundaria']) && !empty($_GET['etiqueta_secundaria'])) {
+            $where_conditions[] = "etiquetas_secundarias LIKE ?";
+            $params[] = '%' . $_GET['etiqueta_secundaria'] . '%';
+            $param_count++;
+        }
+        
+        $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
+        
+        $sql = "SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha, path_imagen FROM etiquetas $where_clause ORDER BY fecha DESC";
+        
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $index => $param) {
+            $stmt->bindParam($index + 1, $param, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+        
+        $registros = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Ajustar la fecha a Lima
+            $dt = new DateTime($row['fecha'], new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone('America/Lima'));
+            $row['fecha'] = $dt->format('Y-m-d H:i:s');
+            $registros[] = $row;
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'data' => $registros
+        ]);
+        exit;
+    }
+    
+    // Si se pide obtener las etiquetas disponibles para los filtros
+    if (isset($_GET['etiquetas_disponibles'])) {
+        // Obtener etiquetas principales únicas
+        $stmt_principales = $pdo->query('SELECT etiqueta_principal, COUNT(*) as cantidad FROM etiquetas WHERE etiqueta_principal IS NOT NULL AND etiqueta_principal != "" GROUP BY etiqueta_principal ORDER BY cantidad DESC');
+        $etiquetas_principales = [];
+        while ($row = $stmt_principales->fetch(PDO::FETCH_ASSOC)) {
+            $etiquetas_principales[] = [
+                'valor' => $row['etiqueta_principal'],
+                'cantidad' => $row['cantidad']
+            ];
+        }
+        
+        // Obtener etiquetas secundarias únicas
+        $stmt_secundarias = $pdo->query('SELECT etiquetas_secundarias FROM etiquetas WHERE etiquetas_secundarias IS NOT NULL AND etiquetas_secundarias != ""');
+        $todas_secundarias = [];
+        while ($row = $stmt_secundarias->fetch(PDO::FETCH_ASSOC)) {
+            if (!empty($row['etiquetas_secundarias'])) {
+                $secundarias = explode(',', $row['etiquetas_secundarias']);
+                foreach ($secundarias as $secundaria) {
+                    $secundaria = trim($secundaria);
+                    if (!empty($secundaria)) {
+                        $todas_secundarias[] = $secundaria;
+                    }
+                }
+            }
+        }
+        
+        // Contar ocurrencias de cada etiqueta secundaria
+        $contador_secundarias = array_count_values($todas_secundarias);
+        arsort($contador_secundarias); // Ordenar por cantidad descendente
+        
+        $etiquetas_secundarias = [];
+        foreach ($contador_secundarias as $etiqueta => $cantidad) {
+            $etiquetas_secundarias[] = [
+                'valor' => $etiqueta,
+                'cantidad' => $cantidad
+            ];
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'principales' => $etiquetas_principales,
+                'secundarias' => $etiquetas_secundarias
+            ]
+        ]);
+        exit;
+    }
     // Si se pide todas=1, devolver todas las imágenes no etiquetadas
     if (isset($_GET['todas'])) {
+        // Verificar autenticación para operaciones de etiquetado
+        if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+            exit;
+        }
+        
         $drone = isset($_GET['drone']) ? basename($_GET['drone']) : 'DRONE_6';
         $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
         $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
@@ -159,6 +268,13 @@ if ($method === 'GET') {
         exit;
     }
     // Obtener la siguiente imagen sin etiquetar (usar DRONE_6 por defecto)
+    // Verificar autenticación para operaciones de etiquetado
+    if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+        exit;
+    }
+    
     $drone = 'DRONE_6';
     $imagenes_dir_drone = __DIR__ . '/imagenes/' . $drone . '/grilla/';
     $imagenes = is_dir($imagenes_dir_drone) ? array_diff(scandir($imagenes_dir_drone), ['.', '..']) : [];
@@ -188,6 +304,13 @@ if ($method === 'GET') {
 }
 
 if ($method === 'DELETE') {
+    // Verificar autenticación para operaciones de eliminación
+    if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+        exit;
+    }
+    
     $data = json_decode(file_get_contents('php://input'), true);
     $imagen = $data['imagen'] ?? null;
     
@@ -212,6 +335,13 @@ if ($method === 'DELETE') {
 }
 
 if ($method === 'POST') {
+    // Verificar autenticación para operaciones de escritura
+    if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+        http_response_code(401);
+        echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+        exit;
+    }
+    
     $data = json_decode(file_get_contents('php://input'), true);
     $imagen = $data['imagen'] ?? null;
     $principales = $data['principales'] ?? [];
