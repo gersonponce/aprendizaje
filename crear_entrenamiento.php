@@ -79,31 +79,52 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         continue;
     }
     
-    // Escribir en CSV
-    $direccion = $path; // Usar la ruta relativa como dirección
-    fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
-    $csvCount++;
+    // Definir las etiquetas principales permitidas para el entrenamiento
+    $etiquetasPermitidas = [
+        'SIN GRIETAS',
+        'MALLA PEQUEÑA < 0.3',
+        'MALLA MEDIANA >0.3 <0.5', 
+        'MALLA GRANDE > 0.5',
+        'LONGITUDINAL',
+        'TRANSVERSAL'
+    ];
+    
+    // Verificar si la etiqueta principal está en la lista de permitidas
+    if (!in_array($etiquetaPrincipal, $etiquetasPermitidas)) {
+        echo "Omitiendo imagen con etiqueta no permitida: $etiquetaPrincipal - $src\n";
+        continue;
+    }
     
     // Clasificación según etiqueta para copiar imágenes
     if ($etiquetaPrincipal === 'SIN GRIETAS') {
         $dest = "$entrenamientoDir/sin_grietas/" . basename($src);
+        $direccion = "/imagenes/entrenamiento/sin_grietas/" . basename($src);
     } elseif ($etiquetaPrincipal === 'MALLA PEQUEÑA < 0.3' || $etiquetaPrincipal === 'MALLA MEDIANA >0.3 <0.5' || $etiquetaPrincipal === 'MALLA GRANDE > 0.5') {
         $dest = "$entrenamientoDir/malla/" . basename($src);
+        $direccion = "/imagenes/entrenamiento/malla/" . basename($src);
     } elseif ($etiquetaPrincipal === 'LONGITUDINAL') {
         $dest = "$entrenamientoDir/longitudinal/" . basename($src);
+        $direccion = "/imagenes/entrenamiento/longitudinal/" . basename($src);
     } elseif ($etiquetaPrincipal === 'TRANSVERSAL') {
         $dest = "$entrenamientoDir/transversal/" . basename($src);
-    } else {
-        continue;
+        $direccion = "/imagenes/entrenamiento/transversal/" . basename($src);
     }
     
     if (!file_exists($dest)) {
         if (copy($src, $dest)) {
             echo "Copiado: $src -> $dest\n";
             $count++;
+            
+            // Escribir en CSV después de copiar exitosamente
+            fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
+            $csvCount++;
         } else {
             echo "Error al copiar: $src\n";
         }
+    } else {
+        // Si la imagen ya existe, también escribir en CSV
+        fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
+        $csvCount++;
     }
 }
 
@@ -137,10 +158,33 @@ fwrite(STDOUT, "\n=== ESTADÍSTICAS DEL DATASET ===\n");
 fwrite(STDOUT, "Archivo CSV: $csvFile\n");
 fwrite(STDOUT, "Total de registros: $csvCount\n");
 
-// Mostrar distribución de etiquetas principales
-$sql = "SELECT etiqueta_principal, COUNT(*) as total FROM etiquetas WHERE etiqueta_principal IS NOT NULL AND etiqueta_principal != '' GROUP BY etiqueta_principal ORDER BY total DESC";
+// Mostrar distribución de etiquetas principales incluidas
+$etiquetasPermitidas = [
+    'SIN GRIETAS',
+    'MALLA PEQUEÑA < 0.3',
+    'MALLA MEDIANA >0.3 <0.5', 
+    'MALLA GRANDE > 0.5',
+    'LONGITUDINAL',
+    'TRANSVERSAL'
+];
+
+$etiquetasPermitidasStr = "'" . implode("','", $etiquetasPermitidas) . "'";
+$sql = "SELECT etiqueta_principal, COUNT(*) as total FROM etiquetas WHERE etiqueta_principal IN ($etiquetasPermitidasStr) GROUP BY etiqueta_principal ORDER BY total DESC";
 $stmt = $pdo->query($sql);
-fwrite(STDOUT, "\nDistribución de etiquetas principales:\n");
+fwrite(STDOUT, "\nDistribución de etiquetas principales INCLUIDAS:\n");
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     fwrite(STDOUT, " - {$row['etiqueta_principal']}: {$row['total']} imágenes\n");
+}
+
+// Mostrar etiquetas omitidas
+$sql = "SELECT etiqueta_principal, COUNT(*) as total FROM etiquetas WHERE etiqueta_principal IS NOT NULL AND etiqueta_principal != '' AND etiqueta_principal NOT IN ($etiquetasPermitidasStr) GROUP BY etiqueta_principal ORDER BY total DESC";
+$stmt = $pdo->query($sql);
+$omitidas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+if (!empty($omitidas)) {
+    fwrite(STDOUT, "\nEtiquetas principales OMITIDAS:\n");
+    foreach ($omitidas as $row) {
+        fwrite(STDOUT, " - {$row['etiqueta_principal']}: {$row['total']} imágenes (no incluidas en entrenamiento)\n");
+    }
+} else {
+    fwrite(STDOUT, "\nNo hay etiquetas omitidas. Todas las etiquetas están incluidas en el entrenamiento.\n");
 } 
