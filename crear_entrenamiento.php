@@ -71,7 +71,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     
     // Copiar todas las imágenes con etiqueta principal válida a la carpeta de entrenamiento
     $dest = "$entrenamientoDir/" . basename($src);
-    $direccion = "/imagenes/entrenamiento/" . basename($src);
+    $direccion = basename($src); // Solo el nombre del archivo sin ruta
     
     if (!file_exists($dest)) {
         if (copy($src, $dest)) {
@@ -98,20 +98,23 @@ echo "Total de imágenes copiadas: $count\n";
 echo "Total de registros en CSV: $csvCount\n";
 echo "Archivo CSV creado: $csvFile\n";
 
-// Comprimir la carpeta entrenamiento en entrenamiento.zip
+// Comprimir la carpeta entrenamiento y el CSV en entrenamiento.zip
 $zipFile = $baseImagenes . '/entrenamiento.zip';
 if (file_exists($zipFile)) {
     unlink($zipFile);
 }
 
-// Ejecutar el comando zip
-$cmd = "cd '" . escapeshellarg($baseImagenes) . "' && zip -r 'entrenamiento.zip' 'entrenamiento'";
+// Ejecutar el comando zip incluyendo la carpeta entrenamiento y el archivo CSV
+$cmd = "cd '" . escapeshellarg($baseImagenes) . "' && zip -r 'entrenamiento.zip' 'entrenamiento' 'dataset_entrenamiento.csv'";
 
 // Mostrar mensaje de progreso
-fwrite(STDOUT, "Comprimiendo carpeta entrenamiento en entrenamiento.zip...\n");
+fwrite(STDOUT, "Comprimiendo carpeta entrenamiento y archivo CSV en entrenamiento.zip...\n");
 exec($cmd, $output, $result);
 if ($result === 0) {
     fwrite(STDOUT, "Compresión completada: $zipFile\n");
+    fwrite(STDOUT, "El archivo ZIP contiene:\n");
+    fwrite(STDOUT, " - Carpeta 'entrenamiento/' con todas las imágenes\n");
+    fwrite(STDOUT, " - Archivo 'dataset_entrenamiento.csv' con las etiquetas\n");
 } else {
     fwrite(STDOUT, "Error al comprimir la carpeta.\n");
 }
