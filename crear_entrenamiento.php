@@ -55,30 +55,48 @@ foreach ($clases as $clase) {
 $database = new Database();
 $pdo = $database->getConnection();
 
+// Crear archivo CSV
+$csvFile = $baseImagenes . '/dataset_entrenamiento.csv';
+$csvHandle = fopen($csvFile, 'w');
+
+// Escribir encabezados del CSV
+fputcsv($csvHandle, ['direccion', 'etiqueta_principal', 'etiqueta_secundaria']);
+
 // Consultar todas las imágenes y sus etiquetas
-$sql = "SELECT path_imagen, etiqueta_principal FROM etiquetas";
+$sql = "SELECT path_imagen, etiqueta_principal, etiquetas_secundarias FROM etiquetas WHERE etiqueta_principal IS NOT NULL AND etiqueta_principal != ''";
 $stmt = $pdo->query($sql);
 $count = 0;
+$csvCount = 0;
+
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $path = $row['path_imagen'];
-    $etiqueta = trim($row['etiqueta_principal']);
+    $etiquetaPrincipal = trim($row['etiqueta_principal']);
+    $etiquetasSecundarias = trim($row['etiquetas_secundarias']);
     $src = __DIR__ . $path;
+    
     if (!file_exists($src)) {
         echo "No existe: $src\n";
         continue;
     }
-    // Clasificación según etiqueta
-    if ($etiqueta === 'SIN GRIETAS') {
+    
+    // Escribir en CSV
+    $direccion = $path; // Usar la ruta relativa como dirección
+    fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
+    $csvCount++;
+    
+    // Clasificación según etiqueta para copiar imágenes
+    if ($etiquetaPrincipal === 'SIN GRIETAS') {
         $dest = "$entrenamientoDir/sin_grietas/" . basename($src);
-    } elseif ($etiqueta === 'MALLA PEQUEÑA < 0.3' || $etiqueta === 'MALLA MEDIANA >0.3 <0.5') {
+    } elseif ($etiquetaPrincipal === 'MALLA PEQUEÑA < 0.3' || $etiquetaPrincipal === 'MALLA MEDIANA >0.3 <0.5' || $etiquetaPrincipal === 'MALLA GRANDE > 0.5') {
         $dest = "$entrenamientoDir/malla/" . basename($src);
-    } elseif ($etiqueta === 'LONGITUDINAL') {
+    } elseif ($etiquetaPrincipal === 'LONGITUDINAL') {
         $dest = "$entrenamientoDir/longitudinal/" . basename($src);
-    } elseif ($etiqueta === 'TRANSVERSAL') {
+    } elseif ($etiquetaPrincipal === 'TRANSVERSAL') {
         $dest = "$entrenamientoDir/transversal/" . basename($src);
     } else {
         continue;
     }
+    
     if (!file_exists($dest)) {
         if (copy($src, $dest)) {
             echo "Copiado: $src -> $dest\n";
@@ -88,7 +106,13 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         }
     }
 }
+
+// Cerrar archivo CSV
+fclose($csvHandle);
+
 echo "Total de imágenes copiadas: $count\n";
+echo "Total de registros en CSV: $csvCount\n";
+echo "Archivo CSV creado: $csvFile\n";
 
 // Comprimir la carpeta entrenamiento en entrenamiento.zip
 $zipFile = $baseImagenes . '/entrenamiento.zip';
@@ -106,4 +130,17 @@ if ($result === 0) {
     fwrite(STDOUT, "Compresión completada: $zipFile\n");
 } else {
     fwrite(STDOUT, "Error al comprimir la carpeta.\n");
+}
+
+// Mostrar estadísticas del CSV
+fwrite(STDOUT, "\n=== ESTADÍSTICAS DEL DATASET ===\n");
+fwrite(STDOUT, "Archivo CSV: $csvFile\n");
+fwrite(STDOUT, "Total de registros: $csvCount\n");
+
+// Mostrar distribución de etiquetas principales
+$sql = "SELECT etiqueta_principal, COUNT(*) as total FROM etiquetas WHERE etiqueta_principal IS NOT NULL AND etiqueta_principal != '' GROUP BY etiqueta_principal ORDER BY total DESC";
+$stmt = $pdo->query($sql);
+fwrite(STDOUT, "\nDistribución de etiquetas principales:\n");
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    fwrite(STDOUT, " - {$row['etiqueta_principal']}: {$row['total']} imágenes\n");
 } 
