@@ -129,12 +129,20 @@
                     <div id="nombre-imagen" class="text-sm text-gray-600 mb-2"></div>
                     
                     <!-- Labels para mostrar etiquetas actuales -->
-                    <div class="flex flex-col gap-2 mb-4">
-                        <div id="etiqueta-principal-actual" class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm font-medium hidden min-w-[200px]">
-                            <span class="font-semibold w-20 inline-block">Principal:</span> <span id="valor-principal-actual"></span>
+                    <div class="mb-4">
+                        <!-- Fila de etiquetas -->
+                        <div class="flex gap-4 mb-2">
+                            <div class="w-20 text-sm font-semibold text-gray-700">Principal:</div>
+                            <div class="w-20 text-sm font-semibold text-gray-700">Secundarias:</div>
                         </div>
-                        <div id="etiquetas-secundarias-actuales" class="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-md text-sm font-medium hidden">
-                            <span class="font-semibold w-20 inline-block">Secundarias:</span> <span id="valor-secundarias-actuales"></span>
+                        <!-- Fila de valores -->
+                        <div class="flex gap-4">
+                            <div id="etiqueta-principal-actual" class="w-32 px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm font-medium hidden min-h-[28px] flex items-center">
+                                <span id="valor-principal-actual"></span>
+                            </div>
+                            <div id="etiquetas-secundarias-actuales" class="w-32 px-3 py-1 bg-green-100 text-green-800 rounded-md text-sm font-medium hidden min-h-[28px] flex items-center">
+                                <span id="valor-secundarias-actuales"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
