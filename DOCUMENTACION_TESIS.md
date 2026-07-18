@@ -2,7 +2,7 @@
 
 ## RESUMEN EJECUTIVO
 
-Este documento presenta la documentación técnica completa del sistema de etiquetado de imágenes desarrollado para el proyecto de investigación "MODELO BASADO EN MACHINE LEARNING PARA IDENTIFICAR GRIETAS MEDIANTE EL USO DE DRON EN EL PAVIMENTO ASFÁLTICO DE LA Av. CIRCUNVALACIÓN DE LA CIUDAD DE PUNO". El sistema permite la clasificación y etiquetado sistemático de imágenes capturadas por drones para la identificación de grietas en pavimento asfáltico, proporcionando una base de datos estructurada para el entrenamiento de modelos de Machine Learning.
+Este documento presenta la documentación técnica completa del sistema de etiquetado de imágenes desarrollado para el proyecto de investigación "MODELO BASADO ". El sistema permite la clasificación y etiquetado sistemático de imágenes capturadas por drones para la identificación de grietas en pavimento asfáltico, proporcionando una base de datos estructurada para el entrenamiento de modelos de Machine Learning.
 
 ## 1. INTRODUCCIÓN
 

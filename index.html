@@ -74,7 +74,7 @@
     <div class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-2 lg:gap-0">
             <div class="flex items-center space-x-4 text-center lg:text-left">
-                <h1 class="text-sm lg:text-lg xl:text-xl font-bold text-blue-900 leading-tight">MODELO BASADO EN MACHINE LEARNING PARA IDENTIFICAR GRIETAS MEDIANTE EL USO DE DRON EN EL PAVIMENTO ASFÁLTICO DE LA Av. CIRCUNVALACIÓN DE LA CIUDAD DE PUNO</h1>
+                <h1 class="text-sm lg:text-lg xl:text-xl font-bold text-blue-900 leading-tight">MODELO BASADO EN MACHINE LEARNING PARA IDENTIFICAR GRIETAS </h1>
             </div>
             <div class="flex items-center space-x-4">
                 <span id="user-info" class="text-xs lg:text-sm text-gray-600"></span>
@@ -109,6 +109,12 @@
                     <option value="DRONE_8">DRONE_8</option>
                     <option value="DRONE_9">DRONE_9</option>
                     <option value="DRONE_10">DRONE_10</option>
+                </select>
+            </div>
+            <div class="mb-3 w-full flex flex-col items-center">
+                <label for="select-imagen-completa" class="block mb-1 text-gray-700 font-semibold text-sm lg:text-base">Ir a imagen completa:</label>
+                <select id="select-imagen-completa" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm lg:text-base w-full max-w-xs">
+                    <option value="" selected disabled>Selecciona una imagen</option>
                 </select>
             </div>
             <div class="mb-3 w-full flex flex-col items-center">
@@ -512,6 +518,41 @@ function cargarListaImagenes() {
         });
 }
 
+// Devuelve el nombre de la imagen completa (DJI_0001) a partir de un recorte
+function obtenerImagenCompleta(nombreRecorte) {
+    const m = nombreRecorte.match(/^(DJI_\d+)/);
+    return m ? m[1] : null;
+}
+
+// Llena el selector con las imágenes completas que aún tienen recortes pendientes
+function actualizarSelectorImagenCompleta() {
+    const select = document.getElementById('select-imagen-completa');
+    const pendientes = new Map();
+    imagenesNoEtiquetadas.forEach(nombre => {
+        const completa = obtenerImagenCompleta(nombre);
+        if (completa) pendientes.set(completa, (pendientes.get(completa) || 0) + 1);
+    });
+
+    select.innerHTML = '<option value="" disabled>Selecciona una imagen</option>';
+    [...pendientes.keys()].sort().forEach(completa => {
+        const option = document.createElement('option');
+        option.value = completa;
+        option.textContent = `${completa} (${pendientes.get(completa)} pendientes)`;
+        select.appendChild(option);
+    });
+
+    const actual = imagenActual ? obtenerImagenCompleta(imagenActual) : null;
+    select.value = pendientes.has(actual) ? actual : '';
+}
+
+document.getElementById('select-imagen-completa').addEventListener('change', function () {
+    const indice = imagenesNoEtiquetadas.findIndex(n => obtenerImagenCompleta(n) === this.value);
+    if (indice !== -1) {
+        indiceActual = indice;
+        mostrarImagenActual();
+    }
+});
+
 async function cargarCSVGrilla(drone) {
     const url = `${BASE_URL}/imagenes/${drone}/${drone}_GRILLA.csv`;
     try {
@@ -553,6 +594,7 @@ async function mostrarImagenActual() {
         enlaceGrilla.classList.add('hidden');
         document.getElementById('btn-atras').disabled = true;
         document.getElementById('btn-adelante').disabled = true;
+        actualizarSelectorImagenCompleta();
         return;
     }
     imagenActual = imagenesNoEtiquetadas[indiceActual];
@@ -576,6 +618,7 @@ async function mostrarImagenActual() {
     document.getElementById('etiqueta-form').reset();
     document.getElementById('btn-atras').disabled = indiceActual === 0;
     document.getElementById('btn-adelante').disabled = indiceActual === imagenesNoEtiquetadas.length - 1;
+    actualizarSelectorImagenCompleta();
     // Previsualización grilla global inferior
     const grillaImg = document.getElementById('grilla-global-preview');
     const grillaMsg = document.getElementById('grilla-global-msg');
