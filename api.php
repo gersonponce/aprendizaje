@@ -276,6 +276,76 @@ if ($method === 'GET') {
         ]);
         exit;
     }
+    // Si se pide originales_etiquetadas=1&drone=DRONE_X, devolver las imágenes
+    // completas (DJI_XXXX) de ese drone que ya tienen recortes etiquetados
+    if (isset($_GET['originales_etiquetadas'])) {
+        if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+            exit;
+        }
+
+        $drone = isset($_GET['drone']) ? basename($_GET['drone']) : 'DRONE_6';
+        // Las imágenes se numeran de forma global y correlativa en bloques de 100:
+        // DRONE_0 = DJI_0001..0100, DRONE_1 = DJI_0101..0200, etc.
+        $drone_num = intval(preg_replace('/^DRONE_/', '', $drone));
+        $num_min = $drone_num * 100 + 1;
+        $num_max = ($drone_num + 1) * 100;
+
+        $stmt = $pdo->prepare('SELECT imagen_original, COUNT(*) as cantidad FROM etiquetas
+            WHERE CAST(SUBSTRING(imagen_original, 5) AS UNSIGNED) BETWEEN ? AND ?
+            GROUP BY imagen_original ORDER BY imagen_original');
+        $stmt->bindParam(1, $num_min, PDO::PARAM_INT);
+        $stmt->bindParam(2, $num_max, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $originales = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $originales[] = [
+                'imagen_original' => $row['imagen_original'],
+                'cantidad' => intval($row['cantidad'])
+            ];
+        }
+        echo json_encode(['status' => 'ok', 'originales' => $originales]);
+        exit;
+    }
+
+    // Si se pide etiquetadas=1&drone=DRONE_X&imagen_original=DJI_XXXX,
+    // devolver los recortes etiquetados de esa imagen completa
+    if (isset($_GET['etiquetadas'])) {
+        if (!isset($_SESSION['authenticated']) || !$_SESSION['authenticated']) {
+            http_response_code(401);
+            echo json_encode(['status' => 'error', 'msg' => 'No autenticado']);
+            exit;
+        }
+
+        $drone = isset($_GET['drone']) ? basename($_GET['drone']) : 'DRONE_6';
+        $imagen_original = $_GET['imagen_original'] ?? '';
+        if ($imagen_original === '') {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'msg' => 'Falta imagen_original']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare('SELECT nombre_imagen, imagen_original, x_imagen, y_imagen, etiqueta_principal, etiquetas_secundarias, usuario, fecha, path_imagen FROM etiquetas WHERE imagen_original = ? ORDER BY nombre_imagen');
+        $stmt->bindParam(1, $imagen_original, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $registros = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $dt = new DateTime($row['fecha'], new DateTimeZone('UTC'));
+            $dt->setTimezone(new DateTimeZone('America/Lima'));
+            $row['fecha'] = $dt->format('Y-m-d H:i:s');
+            // Si el registro no guardó path_imagen, construirlo con el drone pedido
+            if (empty($row['path_imagen'])) {
+                $row['path_imagen'] = "/imagenes/{$drone}/grilla/{$row['nombre_imagen']}";
+            }
+            $registros[] = $row;
+        }
+        echo json_encode(['status' => 'ok', 'registros' => $registros]);
+        exit;
+    }
+
     // Si se pide todas=1, devolver todas las imágenes no etiquetadas
     if (isset($_GET['todas'])) {
         // Verificar autenticación para operaciones de etiquetado
