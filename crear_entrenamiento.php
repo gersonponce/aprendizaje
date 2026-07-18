@@ -57,37 +57,44 @@ $sql = "SELECT path_imagen, etiqueta_principal, etiquetas_secundarias FROM etiqu
 $stmt = $pdo->query($sql);
 $count = 0;
 $csvCount = 0;
+$usados = []; // Nombres de archivo ya usados en la carpeta de entrenamiento
 
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $path = $row['path_imagen'];
-    $etiquetaPrincipal = trim($row['etiqueta_principal']);
-    $etiquetasSecundarias = trim($row['etiquetas_secundarias']);
+    $etiquetaPrincipal = trim($row['etiqueta_principal'] ?? '');
+    $etiquetasSecundarias = trim($row['etiquetas_secundarias'] ?? '');
     $src = __DIR__ . $path;
-    
+
     if (!file_exists($src)) {
         echo "No existe: $src\n";
         continue;
     }
-    
+
     // Copiar todas las imágenes con etiqueta principal válida a la carpeta de entrenamiento
-    $dest = "$entrenamientoDir/" . basename($src);
-    $direccion = basename($src); // Solo el nombre del archivo sin ruta
-    
-    if (!file_exists($dest)) {
-        if (copy($src, $dest)) {
-            echo "Copiado: $src -> $dest\n";
-            $count++;
-            
-            // Escribir en CSV después de copiar exitosamente
-            fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
-            $csvCount++;
-        } else {
-            echo "Error al copiar: $src\n";
-        }
-    } else {
-        // Si la imagen ya existe, también escribir en CSV
+    // Si dos rutas distintas comparten el mismo nombre de archivo, renombrar para no perder ninguna
+    $direccion = basename($src);
+    if (isset($usados[$direccion])) {
+        $nombre = pathinfo($direccion, PATHINFO_FILENAME);
+        $ext = pathinfo($direccion, PATHINFO_EXTENSION);
+        $sufijo = 1;
+        do {
+            $direccion = $nombre . '_' . $sufijo . ($ext !== '' ? '.' . $ext : '');
+            $sufijo++;
+        } while (isset($usados[$direccion]));
+        echo "Nombre duplicado, renombrado: " . basename($src) . " -> $direccion\n";
+    }
+    $dest = "$entrenamientoDir/$direccion";
+
+    if (copy($src, $dest)) {
+        echo "Copiado: $src -> $dest\n";
+        $count++;
+        $usados[$direccion] = true;
+
+        // Escribir en CSV después de copiar exitosamente
         fputcsv($csvHandle, [$direccion, $etiquetaPrincipal, $etiquetasSecundarias]);
         $csvCount++;
+    } else {
+        echo "Error al copiar: $src\n";
     }
 }
 
@@ -105,7 +112,7 @@ if (file_exists($zipFile)) {
 }
 
 // Ejecutar el comando zip incluyendo la carpeta entrenamiento y el archivo CSV
-$cmd = "cd '" . escapeshellarg($baseImagenes) . "' && zip -r 'entrenamiento.zip' 'entrenamiento' 'dataset_entrenamiento.csv'";
+$cmd = "cd " . escapeshellarg($baseImagenes) . " && zip -r 'entrenamiento.zip' 'entrenamiento' 'dataset_entrenamiento.csv'";
 
 // Mostrar mensaje de progreso
 fwrite(STDOUT, "Comprimiendo carpeta entrenamiento y archivo CSV en entrenamiento.zip...\n");
