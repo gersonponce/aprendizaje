@@ -109,10 +109,27 @@ if ($method === 'GET') {
         $drone = basename($_GET['drone']);
         $base = basename($_GET['grillaglobal']); // e.g. DJI_0601
         $drone_num = preg_replace('/^DRONE_/', '', $drone);
-        $img_path = __DIR__ . "/imagenes/DRONE_{$drone_num}/grillaglobal/{$base}_grilla_validacion.png";
-        echo $img_path;
-        if (file_exists($img_path)) {
-            ob_clean();
+        $dir = __DIR__ . "/imagenes/DRONE_{$drone_num}/grillaglobal/";
+
+        // Se admiten ambas extensiones para poder migrar de PNG a JPG drone por
+        // drone. El sufijo "_grilla" queda como respaldo para carpetas antiguas.
+        $candidatos = [
+            "{$base}_grilla_validacion.jpg",
+            "{$base}_grilla_validacion.png",
+            "{$base}_grilla.jpg",
+            "{$base}_grilla.png",
+        ];
+
+        $img_path = null;
+        foreach ($candidatos as $candidato) {
+            if (file_exists($dir . $candidato)) {
+                $img_path = $dir . $candidato;
+                break;
+            }
+        }
+
+        if ($img_path !== null) {
+            while (ob_get_level() > 0) { ob_end_clean(); }
             $mime = mime_content_type($img_path);
             header('Content-Type: ' . $mime);
             header('Content-Length: ' . filesize($img_path));
@@ -120,7 +137,12 @@ if ($method === 'GET') {
             exit;
         } else {
             http_response_code(404);
-            echo 'Imagen no encontrada: ' . $img_path;
+            header('Content-Type: application/json');
+            echo json_encode([
+                'status' => 'error',
+                'msg' => 'Grilla global no encontrada para ' . $base,
+                'buscados' => $candidatos
+            ]);
             exit;
         }
     }
