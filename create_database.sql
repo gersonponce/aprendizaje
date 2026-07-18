@@ -2,12 +2,12 @@
 -- Ejecutar en MySQL/MariaDB
 
 -- Crear la base de datos
-CREATE DATABASE IF NOT EXISTS drone_aprendizaje 
+CREATE DATABASE IF NOT EXISTS drone_sucasaire 
 CHARACTER SET utf8mb4 
 COLLATE utf8mb4_unicode_ci;
 
 -- Usar la base de datos
-USE drone_aprendizaje;
+USE drone_sucasaire;
 
 -- Crear la tabla etiquetas
 CREATE TABLE IF NOT EXISTS etiquetas (

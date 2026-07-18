@@ -69,3 +69,4 @@ test_grilla.php
 # Carpeta de imágenes (archivos grandes)
 imagenes/
 imagenes/* 
+imagenes2/*
