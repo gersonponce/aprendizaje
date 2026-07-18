@@ -51,6 +51,12 @@ class Database {
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
             
+            // Crear tabla filtro_fotos si no existe (la usa api.php para filtrar imágenes)
+            $this->pdo->exec("CREATE TABLE IF NOT EXISTS filtro_fotos (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                foto_nombre VARCHAR(255) UNIQUE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
             // Verificar si existen las nuevas columnas, si no, agregarlas
             $this->addColumnsIfNotExist();
             

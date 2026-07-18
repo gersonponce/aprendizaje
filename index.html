@@ -481,7 +481,20 @@ function manejarClickMedicion(event) {
 function cargarListaImagenes() {
     // Obtener la lista de imágenes no etiquetadas
     fetch(API + '?todas=1&drone=' + encodeURIComponent(droneSeleccionado))
-        .then(r => r.json())
+        .then(async r => {
+            const texto = await r.text();
+            let data;
+            try {
+                data = JSON.parse(texto);
+            } catch (e) {
+                throw new Error(`HTTP ${r.status} — respuesta no JSON:\n${texto.slice(0, 500)}`);
+            }
+            if (!r.ok || data.status === 'error') {
+                throw new Error(`HTTP ${r.status} — ${data.msg || 'error desconocido'}` +
+                    (data.file ? `\n(${data.file}:${data.line})` : ''));
+            }
+            return data;
+        })
         .then(data => {
             if (data.status === 'done' || !data.imagenes || data.imagenes.length === 0) {
                 imagenesNoEtiquetadas = [];
@@ -492,6 +505,10 @@ function cargarListaImagenes() {
             imagenesNoEtiquetadas = data.imagenes;
             indiceActual = 0;
             mostrarImagenActual();
+        })
+        .catch(err => {
+            console.error('cargarListaImagenes:', err);
+            alert('Error al cargar la lista de imágenes:\n\n' + err.message);
         });
 }
 

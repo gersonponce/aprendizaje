@@ -2,6 +2,46 @@
 // Verificar autenticación solo para operaciones que lo requieran
 session_start();
 
+// Devolver SIEMPRE JSON ante cualquier error/fatal, para no dejar respuestas 500 vacías
+// (que en el frontend aparecen como "Unexpected end of JSON input").
+function responderError(string $msg, array $extra = []): void
+{
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    echo json_encode(array_merge(['status' => 'error', 'msg' => $msg], $extra));
+}
+
+set_exception_handler(function ($e) {
+    responderError($e->getMessage(), [
+        'tipo'  => get_class($e),
+        'file'  => $e->getFile(),
+        'line'  => $e->getLine(),
+    ]);
+    exit;
+});
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    // Convierte warnings/notices en excepciones para que las capture el handler de arriba
+    if (!(error_reporting() & $severity)) {
+        return false;
+    }
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        responderError($err['message'], [
+            'tipo' => 'FatalError',
+            'file' => $err['file'],
+            'line' => $err['line'],
+        ]);
+    }
+});
+
 // Incluir configuración de base de datos
 require_once 'database.php';
 
@@ -47,6 +87,10 @@ function obtenerImagenesPermitidas($pdo): array
 
 function filtrarImagenesPermitidas($imagenes, $permitidas): array
 {
+    // Sin filtro configurado, se devuelven todas (evita listar 0 imágenes silenciosamente)
+    if (empty($permitidas)) {
+        return array_values($imagenes);
+    }
     return array_filter($imagenes, function($imagen) use ($permitidas) {
         foreach ($permitidas as $permitida) {
             if (strpos($imagen, $permitida) === 0) {
